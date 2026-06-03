@@ -14,10 +14,15 @@ import {
   IndianRupee,
   Gem,
   Flame,
+  BookOpen,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
+import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import Link from "next/link";
 
 const MOCK_TRENDING_BOOKS: Book[] = [
   {
@@ -72,6 +77,17 @@ const MOCK_TRENDING_BOOKS: Book[] = [
 
 export function UserDashboard() {
   const { user, isLoading } = useAuth();
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/books?q=${encodeURIComponent(searchQuery)}`);
+    } else {
+      router.push("/books");
+    }
+  };
 
   if (isLoading || !user) {
     return (
@@ -89,38 +105,48 @@ export function UserDashboard() {
   return (
     <>
       {/* Hero & Search */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-purple-900/40 to-indigo-900/40 border border-white/10 p-8 sm:p-12 mb-10 shadow-2xl backdrop-blur-sm">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-900/40 to-indigo-900/40 border border-white/10 p-5 sm:p-6 mb-8 shadow-xl backdrop-blur-sm">
         <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-purple-500/20 blur-[100px] rounded-full pointer-events-none" />
-        <div className="relative z-10 max-w-2xl">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-4">
-            What will you read{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
-              next?
-            </span>
-          </h2>
-          <p className="text-zinc-300 text-lg mb-8 max-w-xl">
-            Explore thousands of books from local libraries. Rent or purchase
-            your next favorite story instantly.
-          </p>
+        <div className="relative z-10 flex flex-col md:flex-row-reverse md:items-center justify-between gap-2 sm:gap-6">
+          <div className="flex-1 text-left md:text-right">
+            <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight mb-1.5">
+              What will you read{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
+                next?
+              </span>
+            </h2>
+            <p className="text-zinc-300 text-sm max-w-lg md:ml-auto">
+              Explore books from local libraries. Rent or purchase your next
+              favorite story instantly.
+            </p>
+          </div>
 
-          <div className="relative flex items-center w-full max-w-lg group">
-            <div className="absolute left-4 text-zinc-400 group-focus-within:text-purple-400 transition-colors">
-              <Search className="h-5 w-5" />
+          <form
+            onSubmit={handleSearch}
+            className="relative flex items-center w-full md:w-80 lg:w-96 shrink-0 group"
+          >
+            <div className="absolute left-3 text-zinc-400 group-focus-within:text-purple-400 transition-colors">
+              <Search className="h-4 w-4" />
             </div>
             <Input
               type="text"
-              placeholder="Search by title, author, or genre..."
-              className="pl-12 h-14 bg-zinc-950/60 border-white/20 text-white placeholder:text-zinc-500 rounded-full focus-visible:ring-purple-500/50 text-md shadow-xl backdrop-blur-md"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search title, author..."
+              className="pl-9 h-10 bg-zinc-950/60 border-white/20 text-white placeholder:text-zinc-500 rounded-full focus-visible:ring-purple-500/50 text-sm shadow-inner backdrop-blur-md"
             />
-            <Button className="absolute right-1.5 h-11 rounded-full bg-purple-500 hover:bg-purple-600 text-white px-6">
+            <Button
+              type="submit"
+              className="absolute right-1 h-8 rounded-full bg-purple-500 hover:bg-purple-600 text-white px-4 text-xs font-semibold"
+            >
               Search
             </Button>
-          </div>
+          </form>
         </div>
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard
           title="Active Rentals"
           value="3"
@@ -151,7 +177,7 @@ export function UserDashboard() {
       </div>
 
       {/* Trending Section */}
-      <div className="mb-12">
+      <div className="mb-10">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <Flame className="h-6 w-6 text-orange-500 animate-pulse" />
@@ -161,9 +187,10 @@ export function UserDashboard() {
           </div>
           <Button
             variant="link"
+            asChild
             className="text-purple-400 hover:text-purple-300"
           >
-            View all
+            <Link href="/books">View all</Link>
           </Button>
         </div>
 
@@ -171,37 +198,6 @@ export function UserDashboard() {
           {MOCK_TRENDING_BOOKS.map((book) => (
             <div key={book.id}>
               <BookCard book={book} />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Categories / Quick Links */}
-      <div>
-        <h3 className="text-xl font-bold text-white tracking-tight mb-6">
-          Browse Categories
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {[
-            "Fantasy",
-            "Sci-Fi",
-            "Mystery",
-            "Romance",
-            "Non-Fiction",
-            "Biography",
-          ].map((cat) => (
-            <div
-              key={cat}
-              className="group relative overflow-hidden rounded-xl border border-white/5 bg-zinc-900/50 hover:bg-zinc-800/80 p-4 transition-colors cursor-pointer hover:border-purple-500/30"
-            >
-              <div className="flex flex-col items-center justify-center gap-3 text-center">
-                <div className="h-10 w-10 rounded-full bg-white/5 flex items-center justify-center group-hover:scale-110 group-hover:bg-purple-500/20 transition-all duration-300">
-                  <LayoutGrid className="h-5 w-5 text-zinc-400 group-hover:text-purple-400" />
-                </div>
-                <span className="text-sm font-semibold text-zinc-300 group-hover:text-white">
-                  {cat}
-                </span>
-              </div>
             </div>
           ))}
         </div>

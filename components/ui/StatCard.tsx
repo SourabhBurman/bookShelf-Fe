@@ -38,20 +38,20 @@ export function StatCard({
   variant = "default",
 }: StatCardProps) {
   return (
-    <Card className={cn("backdrop-blur-xl transition-all hover:scale-[1.02] duration-300", variantStyles[variant], className)}>
-      <CardContent className="p-6">
+    <Card className={cn("backdrop-blur-xl transition-all hover:scale-[1.02] duration-300 p-0 gap-0", variantStyles[variant], className)}>
+      <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-zinc-400">{title}</p>
-            <h3 className="text-3xl font-bold text-white mt-2 tracking-tight">{value}</h3>
+            <p className="text-xs font-medium text-zinc-400">{title}</p>
+            <h3 className="text-2xl font-bold text-white mt-1 tracking-tight">{value}</h3>
           </div>
-          <div className={cn("h-12 w-12 rounded-xl flex items-center justify-center shrink-0 border border-white/5", iconStyles[variant])}>
+          <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shrink-0 border border-white/5", iconStyles[variant])}>
             {icon}
           </div>
         </div>
         
         {(trend !== undefined || trendLabel) && (
-          <div className="mt-4 flex items-center text-sm">
+          <div className="mt-3 flex items-center text-xs">
             {trend !== undefined && (
               <span
                 className={cn(
@@ -60,9 +60,9 @@ export function StatCard({
                 )}
               >
                 {trend > 0 ? (
-                  <ArrowUpIcon className="mr-1 h-4 w-4" />
+                  <ArrowUpIcon className="mr-1 h-3 w-3" />
                 ) : trend < 0 ? (
-                  <ArrowDownIcon className="mr-1 h-4 w-4" />
+                  <ArrowDownIcon className="mr-1 h-3 w-3" />
                 ) : null}
                 {Math.abs(trend)}%
               </span>

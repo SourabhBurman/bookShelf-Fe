@@ -16,9 +16,13 @@ import {
   Clock,
   History,
 } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useGetLibrariesQuery } from "@/graphql/library/hooks";
+import { useMutation } from "@apollo/client/react";
+import { PLACE_ORDER } from "@/graphql/order/mutations";
 
 // Placeholder data since we don't have DB context here
 const MOCK_BOOK = {
@@ -72,6 +76,41 @@ const navItems: NavItem[] = [
 
 export default function BookDetailPage() {
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [transactionType, setTransactionType] = useState<"BORROW" | "PURCHASE">(
+    "BORROW",
+  );
+  const [selectedLibraryId, setSelectedLibraryId] = useState<string | null>(
+    null,
+  );
+  const router = useRouter();
+
+  const { data: librariesData, loading: libsLoading } = useGetLibrariesQuery();
+  const libraries = librariesData?.getLibraries || [];
+
+  const [placeOrder, { loading: isPlacingOrder }] = useMutation(PLACE_ORDER, {
+    onCompleted: () => {
+      alert("Order placed successfully!");
+      router.push("/orders");
+    },
+    onError: (err) => {
+      alert(`Error placing order: ${err.message}`);
+    },
+  });
+
+  const handlePlaceOrder = () => {
+    if (!selectedLibraryId) return;
+    placeOrder({
+      variables: {
+        input: [
+          {
+            book: MOCK_BOOK.id, // Replace with actual book ID if fetched dynamically
+            library: selectedLibraryId,
+            transactionType: transactionType,
+          },
+        ],
+      },
+    });
+  };
 
   return (
     <>
@@ -96,9 +135,9 @@ export default function BookDetailPage() {
         </span>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 pb-12">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 pb-12 items-start">
         {/* LEFT COLUMN: Cover Image & At a Glance */}
-        <div className="lg:col-span-4 flex flex-col gap-6">
+        <div className="lg:col-span-4 flex flex-col gap-6 sticky top-24">
           {/* Main Book Cover with Glassmorphic reflection effect */}
           <div className="relative aspect-[3/4] w-full rounded-2xl overflow-hidden shadow-2xl border border-white/10 group">
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-10" />
@@ -161,7 +200,7 @@ export default function BookDetailPage() {
         </div>
 
         {/* MIDDLE COLUMN: Details & Description (Spans more) */}
-        <div className="lg:col-span-8 grid grid-cols-1 xl:grid-cols-12 gap-8">
+        <div className="lg:col-span-8 grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
           {/* TEXT CONTENT */}
           <div className="xl:col-span-7 flex flex-col pt-2">
             <div className="mb-4">
@@ -246,39 +285,6 @@ export default function BookDetailPage() {
                 ))}
               </div>
             </div>
-
-            {/* Library Availability Section */}
-            <div className="mt-12">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-purple-400" /> Available Nearby
-              </h3>
-              <ul className="space-y-3">
-                {MOCK_LIBRARIES.map((lib, idx) => (
-                  <li
-                    key={idx}
-                    className="flex items-center justify-between p-4 rounded-xl border border-white/5 bg-zinc-900/30 hover:bg-zinc-800/50 transition-colors"
-                  >
-                    <div className="flex flex-col">
-                      <span className="font-medium text-white">{lib.name}</span>
-                      <span className="text-sm text-zinc-400">
-                        {lib.distance}
-                      </span>
-                    </div>
-                    <div>
-                      {lib.available ? (
-                        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
-                          <CheckCircle2 className="h-4 w-4" /> Available
-                        </span>
-                      ) : (
-                        <span className="inline-flex text-sm font-medium text-zinc-500 bg-black/20 px-3 py-1 rounded-full border border-white/5">
-                          Out of Stock
-                        </span>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
           </div>
 
           {/* RIGHT COLUMN: Action Sticky Card */}
@@ -298,20 +304,30 @@ export default function BookDetailPage() {
                     </span>
                   </div>
 
-                  <div className="flex flex-col gap-6">
+                  <div className="flex flex-col gap-4 mb-6">
                     {/* RENT OPTION */}
-                    <label className="relative flex cursor-pointer rounded-xl border border-purple-500 bg-purple-500/10 p-4 shadow-sm hover:border-purple-400">
+                    <label
+                      onClick={() => setTransactionType("BORROW")}
+                      className={`relative flex cursor-pointer rounded-xl border p-4 shadow-sm transition-colors ${transactionType === "BORROW" ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-white/5 hover:border-white/20"}`}
+                    >
                       <input
                         type="radio"
                         name="purchaseType"
                         className="sr-only"
-                        defaultChecked
+                        checked={transactionType === "BORROW"}
+                        readOnly
                       />
-                      <div className="absolute top-4 right-4 h-5 w-5 rounded-full border-4 border-purple-500 bg-zinc-950 flex items-center justify-center">
-                        <div className="h-2 w-2 rounded-full bg-purple-500" />
+                      <div
+                        className={`absolute top-4 right-4 h-5 w-5 rounded-full border-2 flex items-center justify-center ${transactionType === "BORROW" ? "border-purple-500 border-4 bg-zinc-950" : "border-zinc-600 bg-zinc-900"}`}
+                      >
+                        {transactionType === "BORROW" && (
+                          <div className="h-2 w-2 rounded-full bg-purple-500" />
+                        )}
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-zinc-300 text-sm font-medium uppercase tracking-wider mb-1">
+                        <span
+                          className={`text-sm font-medium uppercase tracking-wider mb-1 ${transactionType === "BORROW" ? "text-zinc-300" : "text-zinc-400"}`}
+                        >
                           Rent Monthly
                         </span>
                         <span className="text-3xl font-bold text-white">
@@ -324,15 +340,28 @@ export default function BookDetailPage() {
                     </label>
 
                     {/* BUY OPTION */}
-                    <label className="relative flex cursor-pointer rounded-xl border border-white/10 bg-white/5 p-4 shadow-sm hover:border-white/20 transition-colors">
+                    <label
+                      onClick={() => setTransactionType("PURCHASE")}
+                      className={`relative flex cursor-pointer rounded-xl border p-4 shadow-sm transition-colors ${transactionType === "PURCHASE" ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-white/5 hover:border-white/20"}`}
+                    >
                       <input
                         type="radio"
                         name="purchaseType"
                         className="sr-only"
+                        checked={transactionType === "PURCHASE"}
+                        readOnly
                       />
-                      <div className="absolute top-4 right-4 h-5 w-5 rounded-full border-2 border-zinc-600 bg-zinc-900" />
+                      <div
+                        className={`absolute top-4 right-4 h-5 w-5 rounded-full border-2 flex items-center justify-center ${transactionType === "PURCHASE" ? "border-purple-500 border-4 bg-zinc-950" : "border-zinc-600 bg-zinc-900"}`}
+                      >
+                        {transactionType === "PURCHASE" && (
+                          <div className="h-2 w-2 rounded-full bg-purple-500" />
+                        )}
+                      </div>
                       <div className="flex flex-col">
-                        <span className="text-zinc-400 text-sm font-medium uppercase tracking-wider mb-1">
+                        <span
+                          className={`text-sm font-medium uppercase tracking-wider mb-1 ${transactionType === "PURCHASE" ? "text-zinc-300" : "text-zinc-400"}`}
+                        >
                           Buy Permanent
                         </span>
                         <span className="text-3xl font-bold text-white">
@@ -342,14 +371,80 @@ export default function BookDetailPage() {
                     </label>
                   </div>
 
-                  <Button className="w-full h-14 mt-8 rounded-xl bg-purple-500 hover:bg-purple-600 text-white font-bold text-lg shadow-[0_0_20px_-3px_rgba(168,85,247,0.4)] transition-all">
-                    Proceed to Checkout
-                  </Button>
+                  {/* LIBRARY SELECTION */}
+                  <div className="mb-6">
+                    <h4 className="text-white font-medium mb-3 flex items-center gap-2">
+                      <Library className="h-4 w-4 text-purple-400" /> Select a
+                      Library:
+                    </h4>
+                    {libsLoading ? (
+                      <div className="text-sm text-zinc-400 animate-pulse py-4 text-center border border-white/5 rounded-lg bg-zinc-900/50">
+                        Searching nearby libraries...
+                      </div>
+                    ) : libraries.length === 0 ? (
+                      <div className="text-sm text-rose-400 py-4 text-center border border-rose-500/10 rounded-lg bg-rose-500/5">
+                        No libraries found in your area.
+                      </div>
+                    ) : (
+                      <div className="max-h-56 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                        {libraries.map((lib) => (
+                          <label
+                            key={lib?.id}
+                            className={`flex flex-col p-3 rounded-lg border cursor-pointer transition-colors ${selectedLibraryId === lib?.id ? "border-purple-500 bg-purple-500/10" : "border-white/5 bg-zinc-900/50 hover:bg-zinc-800"}`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-start gap-3">
+                                <input
+                                  type="radio"
+                                  name="library"
+                                  className="hidden"
+                                  checked={selectedLibraryId === lib?.id}
+                                  onChange={() =>
+                                    setSelectedLibraryId(lib?.id || "")
+                                  }
+                                />
+                                <div
+                                  className={`mt-0.5 shrink-0 h-4 w-4 rounded-full border flex items-center justify-center ${selectedLibraryId === lib?.id ? "border-purple-500" : "border-zinc-500"}`}
+                                >
+                                  {selectedLibraryId === lib?.id && (
+                                    <div className="h-2 w-2 rounded-full bg-purple-500" />
+                                  )}
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-medium text-white leading-none mb-1">
+                                    {lib?.name}
+                                  </span>
+                                  <span className="text-xs text-zinc-500">
+                                    {lib?.address}
+                                  </span>
+                                </div>
+                              </div>
+                              <span className="text-xs font-bold text-emerald-400 shrink-0">
+                                {transactionType === "BORROW"
+                                  ? `$${MOCK_BOOK.rentPrice}/mo`
+                                  : `$${MOCK_BOOK.purchasePrice}`}
+                              </span>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
-                  <p className="text-center text-xs text-zinc-500 mt-4 flex items-center justify-center gap-2">
-                    <Library className="h-4 w-4" /> Pick up available at 2 near
-                    libraries.
-                  </p>
+                  <Button
+                    disabled={!selectedLibraryId || isPlacingOrder}
+                    onClick={handlePlaceOrder}
+                    className="w-full h-14 rounded-xl bg-purple-500 hover:bg-purple-600 text-white font-bold text-lg shadow-[0_0_20px_-3px_rgba(168,85,247,0.4)] transition-all disabled:opacity-50 disabled:shadow-none"
+                  >
+                    {isPlacingOrder ? (
+                      <span className="flex items-center gap-2">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>{" "}
+                        Processing...
+                      </span>
+                    ) : (
+                      "Proceed to Checkout"
+                    )}
+                  </Button>
                 </CardContent>
               </Card>
             </div>

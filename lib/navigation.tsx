@@ -36,17 +36,13 @@ import { Maybe } from "graphql/jsutils/Maybe";
 
 export const userNavItems: NavItem[] = [
   { title: "Home", href: "/dashboard", icon: <Home /> },
-  { title: "Saved Books", href: "/saved", icon: <Heart /> },
-  { title: "Nearby Libraries", href: "/libraries", icon: <Library /> },
+  { title: "Browse Books", href: "/books", icon: <BookOpen /> },
   { title: "Order History", href: "/orders", icon: <History /> },
-  { title: "Overview", href: "/dashboard", icon: <PieChart /> },
   { title: "Inventory", href: "/inventory", icon: <BookOpen /> },
   { title: "Members", href: "/members", icon: <Users /> },
   { title: "Financials", href: "/financials", icon: <IndianRupee /> },
   { title: "Settings", href: "/settings", icon: <Settings /> },
-  { title: "Platform Overview", href: "/dashboard", icon: <Globe /> },
   { title: "Libraries", href: "/libraries", icon: <Building /> },
-  { title: "Users", href: "/users", icon: <Users /> },
   { title: "Reports", href: "/reports", icon: <ShieldAlert /> },
   { title: "System Health", href: "/health", icon: <Activity /> },
 ];

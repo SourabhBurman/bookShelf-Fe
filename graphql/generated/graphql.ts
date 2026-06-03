@@ -72,14 +72,17 @@ export enum Genre {
   Business = 'Business',
   Drama = 'Drama',
   Fantasy = 'Fantasy',
+  Fiction = 'Fiction',
   Finance = 'Finance',
   Health = 'Health',
+  Help = 'Help',
   History = 'History',
   Horror = 'Horror',
   Mystery = 'Mystery',
   Other = 'Other',
   Romance = 'Romance',
-  SelfHelp = 'SelfHelp',
+  Science = 'Science',
+  Self = 'Self',
   Technology = 'Technology',
   Thriller = 'Thriller'
 }

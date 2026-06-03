@@ -58,22 +58,6 @@ const mockInventory = [
 ];
 
 export default function OwnerInventoryPage() {
-  const { user, isLoading } = useAuth();
-
-  if (isLoading) return null;
-
-  let role = "user";
-  if (user?.role) {
-    role =
-      typeof user.role === "string"
-        ? user.role
-        : String(user.role.type || user.role).toLowerCase();
-  }
-
-  if (role !== "owner") {
-    return <Forbidden />;
-  }
-
   return (
     <div className="flex flex-col gap-8">
       {/* Header Actions */}
