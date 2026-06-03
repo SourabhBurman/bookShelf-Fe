@@ -1,6 +1,5 @@
 "use client";
 
-import { DashboardShell, NavItem } from "@/components/layout/DashboardShell";
 import { StatCard } from "@/components/ui/StatCard";
 import { Button } from "@/components/ui/button";
 import {
@@ -97,7 +96,7 @@ export function OwnerDashboard() {
   }
 
   return (
-    <DashboardShell userTitle="Library Dashboard">
+    <>
       {/* Top Banner Warning / Alert if needed */}
       <div className="mb-8 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 flex items-center justify-between backdrop-blur-md">
         <div className="flex items-center gap-3">
@@ -110,7 +109,7 @@ export function OwnerDashboard() {
         <Button
           variant="outline"
           size="sm"
-          className="border-rose-500/50 text-rose-400 hover:bg-rose-500/20"
+          className="bg-transparent border-rose-500/50 text-rose-400 hover:bg-rose-500/20"
         >
           Review Pending Returns
         </Button>
@@ -336,7 +335,7 @@ export function OwnerDashboard() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-8 border-white/10 hover:bg-purple-500/20 hover:text-purple-400 hover:border-purple-500/50"
+                          className="h-8 bg-transparent text-white border-white/10 hover:bg-purple-500/20 hover:text-purple-400 hover:border-purple-500/50"
                         >
                           Mark Returned
                         </Button>
@@ -382,6 +381,6 @@ export function OwnerDashboard() {
           </CardContent>
         </Card>
       </div>
-    </DashboardShell>
+    </>
   );
 }

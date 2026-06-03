@@ -18,14 +18,11 @@ interface DashboardShellProps {
   children: React.ReactNode;
   userTitle?: string;
   userRoleLabel?: string;
-  userName?: string;
 }
 
 export function DashboardShell({
   children,
   userTitle = "Dashboard",
-  userRoleLabel,
-  userName,
 }: DashboardShellProps) {
   const { user, logout } = useAuth();
   const router = useRouter();
@@ -35,25 +32,36 @@ export function DashboardShell({
     await logout();
     router.push("/login");
   };
-
-  const finalUserName = userName || user?.name || user?.email || "Guest";
-
-  // Safely extract the role as a string (handles arrays or other types)
-  let rawRole: string = "user";
-  if (user?.role) {
-    rawRole =
-      user.role?.type || (typeof user.role === "string" ? user.role : "user");
-  }
-
-  const formattedRole = rawRole;
-
-  const finalUserRoleLabel = userRoleLabel || formattedRole;
+  const finalUserName =
+    (user?.name || user?.email || "Guest").charAt(0).toUpperCase() +
+    (user?.name || user?.email || "Guest").slice(1);
+  const finalRoleLabel = user?.role?.displayName;
 
   // Use the provided navItems, or fallback to the centralized list based on role if empty
-  const activeNavItems = getNavItemsByRole(formattedRole);
+  const activeNavItems = getNavItemsByRole(user?.role?.type);
+
+  // Derive title from pathname
+  const routeTitles: Record<string, string> = {
+    "/dashboard": "Dashboard",
+    "/inventory": "Library Inventory",
+    "/orders": "Rentals & History",
+    "/financials": "Financial Analytics",
+    "/members": "Library Members",
+    "/settings": "Settings",
+    "/health": "System Health",
+    "/users": "User Management",
+    "/reports": "System Reports",
+    "/libraries": "Nearby Libraries",
+    "/saved": "Saved Books",
+  };
+
+  let displayTitle = routeTitles[pathname] || "Dashboard";
+  if (pathname.startsWith("/books/")) {
+    displayTitle = "Book Details";
+  }
 
   return (
-    <div className="flex min-h-screen bg-zinc-950 text-zinc-50 font-sans selection:bg-purple-500/30">
+    <div className="flex h-screen overflow-hidden bg-zinc-950 text-zinc-50 font-sans selection:bg-purple-500/30">
       {/* Background gradients for that deep space aesthetic */}
       <div className="fixed inset-0 -z-10 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))] mix-blend-screen pointer-events-none" />
 
@@ -75,19 +83,19 @@ export function DashboardShell({
 
         <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1 scrollbar-hide">
           <div className="px-2 mb-4 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-            {finalUserRoleLabel} Panel
+            {finalRoleLabel} Panel
           </div>
           <nav className="grid items-start gap-2">
             {activeNavItems.map((item, index) => {
               const isActive =
                 item.href === "/dashboard"
                   ? pathname === item.href
-                  : pathname === item.href;
+                  : pathname.startsWith(item.href);
 
               return (
-                <Link
-                  key={index}
-                  href={item.href}
+                <div key={index}>
+                  <Link
+                    href={item.href}
                   className={cn(
                     "group flex items-center rounded-md px-3 py-2.5 text-sm font-medium hover:bg-zinc-800/50 hover:text-white transition-all",
                     "focus:outline-none focus:ring-2 focus:ring-purple-500/20",
@@ -107,7 +115,8 @@ export function DashboardShell({
                     {item.icon}
                   </div>
                   {item.title}
-                </Link>
+                  </Link>
+                </div>
               );
             })}
           </nav>
@@ -123,7 +132,7 @@ export function DashboardShell({
                 {finalUserName}
               </span>
               <span className="text-xs text-zinc-400 truncate">
-                {finalUserRoleLabel}
+                {finalRoleLabel}
               </span>
             </div>
           </div>
@@ -140,7 +149,7 @@ export function DashboardShell({
       </aside>
 
       {/* Main Content Pane */}
-      <div className="flex w-full flex-col flex-1 min-w-0">
+      <div className="flex w-full flex-col flex-1 min-w-0 overflow-y-auto overscroll-none">
         <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-white/10 bg-zinc-950/50 backdrop-blur-xl px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
           <Button
             variant="ghost"
@@ -158,7 +167,7 @@ export function DashboardShell({
             {/* Dynamic Heading based on current route context, hidden on mobile logic */}
             <div className="flex-1">
               <h1 className="text-xl font-bold leading-tight text-white sm:block">
-                {userTitle}
+                {displayTitle}
               </h1>
             </div>
 
@@ -194,7 +203,8 @@ export function DashboardShell({
           </div>
         </header>
 
-        <main className="flex-1 px-4 py-8 sm:px-6 lg:px-8 lg:py-10 max-w-7xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out fill-mode-both">
+        {/* Page Content */}
+        <main className="flex-1 py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
           {children}
         </main>
       </div>

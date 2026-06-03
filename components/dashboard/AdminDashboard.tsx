@@ -1,7 +1,5 @@
 "use client";
 
-import { DashboardShell } from "@/components/layout/DashboardShell";
-import { NavItem } from "@/components/layout/DashboardShell";
 import { StatCard } from "@/components/ui/StatCard";
 import {
   Card,
@@ -81,7 +79,7 @@ export function AdminDashboard() {
   }
 
   return (
-    <DashboardShell userTitle="Super Admin Console">
+    <>
       {/* Global Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard
@@ -355,6 +353,6 @@ export function AdminDashboard() {
           </div>
         </CardContent>
       </Card>
-    </DashboardShell>
+    </>
   );
 }

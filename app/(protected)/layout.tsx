@@ -1,8 +1,10 @@
 "use client";
 
-import { ApolloWrapper } from "@/context/ApolloWrapper";
+import { DashboardShell } from "@/components/layout/DashboardShell";
 import { useAuth } from "@/context/AuthContext";
-import { redirect } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
+import { useEffect } from "react";
+import MyLoading from "@/components/myLoading";
 
 export default function ProtectedLayout({
   children,
@@ -10,16 +12,18 @@ export default function ProtectedLayout({
   children: React.ReactNode;
 }) {
   const { user, isLoading } = useAuth();
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen flex-col bg-zinc-950 items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-purple-500 border-t-transparent"></div>
-      </div>
-    );
-  }
-  if (!user) {
-    redirect("/login");
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.push("/login");
+    }
+  }, [user, isLoading, router]);
+
+  if (isLoading || !user) {
+    return <MyLoading />;
   }
 
-  return <ApolloWrapper>{children}</ApolloWrapper>;
+  // return children;
+  return <DashboardShell>{children}</DashboardShell>;
 }

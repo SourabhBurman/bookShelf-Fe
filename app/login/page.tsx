@@ -16,9 +16,9 @@ import { ArrowLeft, BookOpen, Mail, Lock } from "lucide-react";
 import { Field, Form, useForm } from "@formisch/react";
 import * as v from "valibot";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { login } from "@/services/authServices";
 import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "nextjs-toploader/app";
+import { useGetUserLazyQuery } from "@/graphql/user/hooks";
 
 const loginSchema = v.object({
   email: v.pipe(
@@ -27,7 +27,7 @@ const loginSchema = v.object({
   ),
   password: v.pipe(
     v.string("Password is required"),
-    v.minLength(6, "Password must be at least 6 characters"),
+    v.minLength(3, "Password must be at least 6 characters"),
   ),
 });
 
@@ -39,6 +39,8 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  const { getUser } = useGetUserLazyQuery();
+
   const loginForm = useForm({
     schema: loginSchema,
   });
@@ -48,9 +50,12 @@ export default function LoginPage() {
     const { email, password } = response;
     try {
       setErrorMessage("");
+      const { login } = await import("@/services/authServices");
       const res = await login(email, password);
-      const loggedInUser = res.user || res;
-      setUser(loggedInUser);
+      const userData = await getUser();
+      if (userData?.data?.getUser) {
+        setUser(userData.data.getUser);
+      }
 
       router.push("/dashboard");
     } catch (error) {
@@ -59,7 +64,6 @@ export default function LoginPage() {
       } else {
         setErrorMessage("An unexpected error occurred");
       }
-    } finally {
       setIsLoading(false);
     }
   };
@@ -212,6 +216,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 className="w-full h-11 bg-purple-500 hover:bg-purple-600 text-white font-semibold transition-all shadow-lg hover:shadow-purple-500/25 border-none"
+                disabled={isLoading}
               >
                 Sign In
               </Button>

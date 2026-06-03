@@ -12,33 +12,57 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ArrowLeft, User, Mail, Lock, ShieldCheck } from "lucide-react";
 import { Field, Form, useForm } from "@formisch/react";
 import * as v from "valibot";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 import { useAuth } from "@/context/AuthContext";
+import { User_Roles, Gender } from "@/graphql/generated/graphql";
+import { signup } from "@/services/authServices";
 
-const signupSchema = v.object({
-  name: v.pipe(
-    v.string("Name is required"),
-    v.minLength(3, "Name must be at least 3 characters"),
+const signupSchema = v.pipe(
+  v.object({
+    name: v.pipe(
+      v.string("Name is required"),
+      v.minLength(3, "Name must be at least 3 characters"),
+    ),
+    email: v.pipe(
+      v.string("Email is required"),
+      v.email("Invalid email address"),
+    ),
+    role: v.pipe(
+      v.picklist(
+        [User_Roles.Reader, User_Roles.LibraryOwner, User_Roles.Admin],
+        "Please select a valid role",
+      ),
+    ),
+    gender: v.pipe(
+      v.picklist(
+        [Gender.Male, Gender.Female, Gender.Other],
+        "Please select a valid gender",
+      ),
+    ),
+    password: v.pipe(
+      v.string("Password is required"),
+      v.minLength(3, "Password must be at least 6 characters"),
+    ),
+    confirmPassword: v.string("Please confirm your password"),
+  }),
+  v.forward(
+    v.check(
+      (input) => input.password === input.confirmPassword,
+      "Passwords do not match",
+    ),
+    ["confirmPassword"],
   ),
-  email: v.pipe(
-    v.string("Email is required"),
-    v.email("Invalid email address"),
-  ),
-  password: v.pipe(
-    v.string("Password is required"),
-    v.minLength(6, "Password must be at least 6 characters"),
-  ),
-  confirmPassword: v.string("Please confirm your password"),
-});
+);
 
 type SignupSchema = v.InferInput<typeof signupSchema>;
 
 export default function SignupPage() {
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const router = useRouter();
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -51,21 +75,35 @@ export default function SignupPage() {
 
   const signupForm = useForm({
     schema: signupSchema,
+    initialInput: {
+      role: User_Roles.Reader,
+      gender: Gender.Male,
+    },
   });
 
   const handleFormSubmission = async (response: SignupSchema) => {
     setIsLoading(true);
     try {
       setErrorMessage("");
-      // Replace this with actual API call
-      console.log({ response });
+
+      // Complete the signup flow
+      await signup({
+        ...response,
+      });
+
+      // Automatically log the user in after successful signup
+      const { login } = await import("@/services/authServices");
+      const res = await login(response.email, response.password);
+      const loggedInUser = res.user || res;
+
+      setUser(loggedInUser);
+      router.push("/dashboard");
     } catch (error) {
       if (error instanceof Error) {
         setErrorMessage(error.message);
       } else {
         setErrorMessage("An unexpected error occurred");
       }
-    } finally {
       setIsLoading(false);
     }
   };
@@ -119,7 +157,7 @@ export default function SignupPage() {
         </div>
 
         <Card className="bg-zinc-900/70 border-white/10 backdrop-blur-xl shadow-2xl overflow-hidden relative">
-          <CardHeader className="space-y-2 text-center pb-6">
+          <CardHeader className="space-y-2 text-center">
             <CardTitle className="text-3xl font-bold tracking-tight text-white">
               Create an account
             </CardTitle>
@@ -129,7 +167,51 @@ export default function SignupPage() {
           </CardHeader>
 
           <Form of={signupForm} onSubmit={handleFormSubmission}>
-            <CardContent className="space-y-5 pb-4">
+            <CardContent className="space-y-3 pb-4">
+              <Field of={signupForm} path={["role"]}>
+                {(field) => (
+                  <div className="space-y-2 group">
+                    <ToggleGroup
+                      type="single"
+                      value={field.input ?? ""}
+                      onValueChange={(val) => {
+                        if (val) {
+                          field.onChange(val as User_Roles);
+                        }
+                      }}
+                      className="justify-center m-auto gap-3 pt-1"
+                    >
+                      <ToggleGroupItem
+                        value={User_Roles.Reader}
+                        aria-label="Toggle Reader"
+                        className={`flex-1 border border-white/10 bg-zinc-950/50 data-[state=on]:bg-purple-500/20 data-[state=on]:text-purple-400 data-[state=on]:border-purple-500/50 hover:bg-zinc-900 hover:text-white transition-all ${field.errors || errorMessage ? "border-rose-500/50 text-rose-400" : "text-zinc-300"}`}
+                      >
+                        Reader
+                      </ToggleGroupItem>
+                      <ToggleGroupItem
+                        value={User_Roles.LibraryOwner}
+                        aria-label="Toggle Library Owner"
+                        className={`flex-1 border border-white/10 bg-zinc-950/50 data-[state=on]:bg-purple-500/20 data-[state=on]:text-purple-400 data-[state=on]:border-purple-500/50 hover:bg-zinc-900 hover:text-white transition-all ${field.errors || errorMessage ? "border-rose-500/50 text-rose-400" : "text-zinc-300"}`}
+                      >
+                        Owner
+                      </ToggleGroupItem>
+                      <ToggleGroupItem
+                        value={User_Roles.Admin}
+                        aria-label="Toggle Admin"
+                        className={`flex-1 border border-white/10 bg-zinc-950/50 data-[state=on]:bg-purple-500/20 data-[state=on]:text-purple-400 data-[state=on]:border-purple-500/50 hover:bg-zinc-900 hover:text-white transition-all ${field.errors || errorMessage ? "border-rose-500/50 text-rose-400" : "text-zinc-300"}`}
+                      >
+                        Admin
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                    {field.errors && (
+                      <p className="text-xs font-medium text-rose-400 animate-in slide-in-from-top-1 fade-in duration-300 text-center">
+                        {field.errors[0]}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </Field>
+
               <Field of={signupForm} path={["name"]}>
                 {(field) => (
                   <div className="space-y-2 group">
@@ -191,6 +273,56 @@ export default function SignupPage() {
                         }`}
                       />
                     </div>
+                    {field.errors && (
+                      <p className="text-xs font-medium text-rose-400 animate-in slide-in-from-top-1 fade-in duration-300">
+                        {field.errors[0]}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </Field>
+
+              <Field of={signupForm} path={["gender"]}>
+                {(field) => (
+                  <div className="space-y-2 group">
+                    <Label
+                      htmlFor="gender"
+                      className="text-sm font-medium text-zinc-300 transition-colors group-focus-within:text-purple-400"
+                    >
+                      Gender
+                    </Label>
+                    <ToggleGroup
+                      type="single"
+                      value={field.input ?? ""}
+                      onValueChange={(val) => {
+                        if (val) {
+                          field.onChange(val as Gender);
+                        }
+                      }}
+                      className="justify-start gap-3 pt-1"
+                    >
+                      <ToggleGroupItem
+                        value={Gender.Male}
+                        aria-label="Toggle Male"
+                        className={`flex-1 border border-white/10 bg-zinc-950/50 data-[state=on]:bg-purple-500/20 data-[state=on]:text-purple-400 data-[state=on]:border-purple-500/50 hover:bg-zinc-900 hover:text-white transition-all ${field.errors || errorMessage ? "border-rose-500/50 text-rose-400" : "text-zinc-300"}`}
+                      >
+                        Male
+                      </ToggleGroupItem>
+                      <ToggleGroupItem
+                        value={Gender.Female}
+                        aria-label="Toggle Female"
+                        className={`flex-1 border border-white/10 bg-zinc-950/50 data-[state=on]:bg-purple-500/20 data-[state=on]:text-purple-400 data-[state=on]:border-purple-500/50 hover:bg-zinc-900 hover:text-white transition-all ${field.errors || errorMessage ? "border-rose-500/50 text-rose-400" : "text-zinc-300"}`}
+                      >
+                        Female
+                      </ToggleGroupItem>
+                      <ToggleGroupItem
+                        value={Gender.Other}
+                        aria-label="Toggle Other"
+                        className={`flex-1 border border-white/10 bg-zinc-950/50 data-[state=on]:bg-purple-500/20 data-[state=on]:text-purple-400 data-[state=on]:border-purple-500/50 hover:bg-zinc-900 hover:text-white transition-all ${field.errors || errorMessage ? "border-rose-500/50 text-rose-400" : "text-zinc-300"}`}
+                      >
+                        Other
+                      </ToggleGroupItem>
+                    </ToggleGroup>
                     {field.errors && (
                       <p className="text-xs font-medium text-rose-400 animate-in slide-in-from-top-1 fade-in duration-300">
                         {field.errors[0]}
@@ -279,6 +411,7 @@ export default function SignupPage() {
               <Button
                 type="submit"
                 className="w-full h-11 bg-purple-500 hover:bg-purple-600 text-white font-semibold transition-all shadow-lg hover:shadow-purple-500/25 border-none"
+                disabled={isLoading}
               >
                 Sign Up
               </Button>

@@ -1,6 +1,5 @@
 "use client";
 
-import { DashboardShell, NavItem } from "@/components/layout/DashboardShell";
 import { BookCard, Book } from "@/components/ui/BookCard";
 import { StatCard } from "@/components/ui/StatCard";
 import {
@@ -88,7 +87,7 @@ export function UserDashboard() {
   }
 
   return (
-    <DashboardShell userTitle="Discover Books">
+    <>
       {/* Hero & Search */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-purple-900/40 to-indigo-900/40 border border-white/10 p-8 sm:p-12 mb-10 shadow-2xl backdrop-blur-sm">
         <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-purple-500/20 blur-[100px] rounded-full pointer-events-none" />
@@ -135,7 +134,6 @@ export function UserDashboard() {
           icon={<IndianRupee className="h-6 w-6" />}
           variant="emerald"
           trend={12}
-          trendLabel="vs buying new"
         />
         <StatCard
           title="Books Read"
@@ -143,14 +141,12 @@ export function UserDashboard() {
           icon={<Bookmark className="h-6 w-6" />}
           variant="blue"
           trend={8}
-          trendLabel="this year"
         />
         <StatCard
           title="Membership"
           value="Pro"
           icon={<Gem className="h-6 w-6" />}
           variant="amber"
-          trendLabel="Renews in 14 days"
         />
       </div>
 
@@ -173,7 +169,9 @@ export function UserDashboard() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {MOCK_TRENDING_BOOKS.map((book) => (
-            <BookCard key={book.id} book={book} />
+            <div key={book.id}>
+              <BookCard book={book} />
+            </div>
           ))}
         </div>
       </div>
@@ -194,7 +192,7 @@ export function UserDashboard() {
           ].map((cat) => (
             <div
               key={cat}
-              className="group relative overflow-hidden rounded-xl border border-white/5 bg-zinc-900/50 hover:bg-zinc-800/80 p-4 transition-all cursor-pointer hover:border-purple-500/30"
+              className="group relative overflow-hidden rounded-xl border border-white/5 bg-zinc-900/50 hover:bg-zinc-800/80 p-4 transition-colors cursor-pointer hover:border-purple-500/30"
             >
               <div className="flex flex-col items-center justify-center gap-3 text-center">
                 <div className="h-10 w-10 rounded-full bg-white/5 flex items-center justify-center group-hover:scale-110 group-hover:bg-purple-500/20 transition-all duration-300">
@@ -208,6 +206,6 @@ export function UserDashboard() {
           ))}
         </div>
       </div>
-    </DashboardShell>
+    </>
   );
 }

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Ghost, Home, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 
 export default function NotFound() {
   const router = useRouter();

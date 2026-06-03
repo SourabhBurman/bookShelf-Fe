@@ -10,15 +10,6 @@ import {
   Dispatch,
 } from "react";
 
-export type User = {
-  id?: string;
-  name?: string;
-  email?: string;
-  role: {
-    type: "admin" | "owner" | "user";
-  };
-};
-
 interface AuthContextType {
   user: User | null;
   setUser: Dispatch<SetStateAction<User | null>>;
@@ -28,33 +19,54 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
-import { GET_USER } from "@/graphql/user";
 import { logout as logoutApi } from "@/services/authServices";
-import { useLazyQuery } from "@apollo/client/react";
+import { useGetUserLazyQuery } from "@/graphql/user/hooks";
+import type { User } from "@/graphql/generated/graphql";
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+export const AuthProvider = ({
+  children,
+  hasInitialToken = true,
+}: {
+  children: ReactNode;
+  hasInitialToken?: boolean;
+}) => {
   const [user, setUser] = useState<User | null>(null);
-  const [getUser, { loading, error }] = useLazyQuery(GET_USER);
+
+  // isInitializing state is used to handle the user state when user click refresh button
+  // it will be true when user is loading for the first time
+  // and false when user is loaded
+  const [isInitializing, setIsInitializing] = useState(true);
+  const { getUser, loading, error } = useGetUserLazyQuery();
 
   // Fetch the user session securely from the backend cookie via GraphQL
   useEffect(() => {
     const fetchUser = async () => {
+      // Check if the server detected the HTTP-only cookie.
+      // If not, we skip fetching user details immediately.
+      if (!hasInitialToken) {
+        setUser(null);
+        setIsInitializing(false);
+        return;
+      }
+
       try {
         const response = await getUser();
-
-        if (error || response?.data) {
+        const userData = response?.data?.getUser;
+        if (error || !userData) {
           setUser(null);
         } else {
-          setUser(response?.data?.getUser);
+          setUser(userData);
         }
       } catch (e) {
         console.error("Failed to fetch user session", e);
         setUser(null);
+      } finally {
+        setIsInitializing(false);
       }
     };
 
     fetchUser();
-  }, []);
+  }, [getUser, error, hasInitialToken]);
 
   const logout = async () => {
     try {
@@ -67,7 +79,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, logout, isLoading: loading }}>
+    <AuthContext.Provider
+      value={{ user, setUser, logout, isLoading: isInitializing || loading }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -15,6 +15,8 @@ import {
   History,
 } from "lucide-react";
 import { NavItem } from "@/components/layout/DashboardShell";
+import { User_Roles } from "@/graphql/generated/graphql";
+import { Maybe } from "graphql/jsutils/Maybe";
 
 export const adminNavItems: NavItem[] = [
   { title: "Platform Overview", href: "/dashboard", icon: <Globe /> },
@@ -40,11 +42,13 @@ export const userNavItems: NavItem[] = [
   { title: "Order History", href: "/orders", icon: <History /> },
 ];
 
-export const getNavItemsByRole = (role: string): NavItem[] => {
-  switch (role.toLowerCase()) {
-    case "admin":
+export const getNavItemsByRole = (
+  role: Maybe<User_Roles> | undefined,
+): NavItem[] => {
+  switch (role) {
+    case User_Roles.Admin:
       return adminNavItems;
-    case "owner":
+    case User_Roles.LibraryOwner:
       return ownerNavItems;
     default:
       return userNavItems;

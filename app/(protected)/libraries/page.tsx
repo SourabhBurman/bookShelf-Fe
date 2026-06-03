@@ -13,21 +13,22 @@ export default function UnifiedLibrariesPage() {
 
   let role = "user";
   if (user?.role) {
-    role = typeof user.role === "string" ? user.role : String(user.role.type || user.role).toLowerCase();
+    if (typeof user.role === "string") {
+      role = user.role;
+    } else if (user.role.type) {
+      role = user.role.type;
+    } else {
+      role = String(user.role);
+    }
   }
+  role = role.toLowerCase();
 
-  if (role === "admin") {
-    return <AdminLibraries />;
+  switch (role) {
+    case "admin":
+      return <AdminLibraries />;
+    case "owner":
+      return <Forbidden />;
+    default:
+      return <UserLibraries />;
   }
-  
-  if (role === "user") {
-    return <UserLibraries />;
-  }
-
-  // Owners shouldn't access the global libraries page, they have /inventory
-  return (
-    <DashboardShell navItems={[]} userTitle="Unauthorized">
-      <Forbidden />
-    </DashboardShell>
-  );
 }

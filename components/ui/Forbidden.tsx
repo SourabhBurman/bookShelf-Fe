@@ -2,7 +2,7 @@
 
 import { ShieldAlert, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 
 export function Forbidden() {
   const router = useRouter();
@@ -16,7 +16,9 @@ export function Forbidden() {
         Access Denied
       </h2>
       <p className="text-zinc-400 max-w-md mb-8 text-lg">
-        You do not have the required permissions to view this sector of the platform. If you believe this is an error, contact system administration.
+        You do not have the required permissions to view this sector of the
+        platform. If you believe this is an error, contact system
+        administration.
       </p>
       <Button
         onClick={() => router.push("/dashboard")}
