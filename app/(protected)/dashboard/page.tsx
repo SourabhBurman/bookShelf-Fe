@@ -8,6 +8,8 @@ import { useAuth } from "@/context/AuthContext";
 import MyLoading from "@/components/myLoading";
 import { User_Roles } from "@/graphql/generated/graphql";
 
+import LibrarySetupPage from "@/app/(protected)/inventory/setup/page";
+
 export default function DashboardPage() {
   const { user, isLoading } = useAuth();
 
@@ -19,12 +21,15 @@ export default function DashboardPage() {
     redirect("/login");
   }
 
-  let role = user?.role?.type;
+  const role = user?.role?.type;
 
   switch (role) {
     case User_Roles.Admin:
       return <AdminDashboard />;
     case User_Roles.LibraryOwner:
+      if (!user.library_owned) {
+        return <LibrarySetupPage />;
+      }
       return <OwnerDashboard />;
     default:
       return <UserDashboard />;

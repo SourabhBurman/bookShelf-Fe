@@ -1,31 +1,27 @@
 "use client";
 
-import { DashboardShell, NavItem } from "@/components/layout/DashboardShell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Star,
   Library,
-  MapPin,
   Share2,
   Heart,
   ShieldCheck,
-  CheckCircle2,
   ChevronRight,
-  Home,
-  Clock,
-  History,
 } from "lucide-react";
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useGetLibrariesQuery } from "@/graphql/library/hooks";
-import { useMutation } from "@apollo/client/react";
+import { useMutation, useQuery } from "@apollo/client/react";
 import { PLACE_ORDER } from "@/graphql/order/mutations";
+import MyLoading from "@/components/myLoading";
+import { GetBookByIdDocument } from "@/graphql/book/queries.generated";
 
 // Placeholder data since we don't have DB context here
-const MOCK_BOOK = {
+const DEFAULT_BOOK_VALUES = {
   id: "1",
   title: "The Midnight Library",
   author: "Matt Haig",
@@ -41,13 +37,8 @@ const MOCK_BOOK = {
   publishedDate: "2020-08-13",
   rentPrice: 2.99,
   purchasePrice: 14.99,
+  quantityAvailable: 0,
 };
-
-const MOCK_LIBRARIES = [
-  { name: "Downtown Public Library", distance: "0.8 miles", available: true },
-  { name: "Tech District Hub", distance: "2.1 miles", available: false },
-  { name: "Westside Community Books", distance: "3.5 miles", available: true },
-];
 
 const MOCK_REVIEWS = [
   {
@@ -68,12 +59,6 @@ const MOCK_REVIEWS = [
   },
 ];
 
-const navItems: NavItem[] = [
-  { title: "Home", href: "/dashboard/user", icon: <Home /> },
-  { title: "My Rentals", href: "/orders", icon: <Clock /> },
-  { title: "Order History", href: "/orders", icon: <History /> },
-];
-
 export default function BookDetailPage() {
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [transactionType, setTransactionType] = useState<"BORROW" | "PURCHASE">(
@@ -83,6 +68,40 @@ export default function BookDetailPage() {
     null,
   );
   const router = useRouter();
+  const params = useParams();
+  const bookId = params?.id as string;
+
+  const { data: bookData, loading: bookLoading } = useQuery(
+    GetBookByIdDocument,
+    {
+      variables: { id: bookId },
+      skip: !bookId,
+    },
+  );
+
+  const fetchedBook = bookData?.getBook;
+
+  const book = {
+    id: fetchedBook?.id || DEFAULT_BOOK_VALUES.id,
+    title: fetchedBook?.name || DEFAULT_BOOK_VALUES.title,
+    // The backend might not have author in getBook by ID, but we fall back
+    author: fetchedBook?.author || DEFAULT_BOOK_VALUES.author,
+    description: fetchedBook?.description || DEFAULT_BOOK_VALUES.description,
+    coverImage: fetchedBook?.coverImage || DEFAULT_BOOK_VALUES.coverImage,
+    category: fetchedBook?.genre || DEFAULT_BOOK_VALUES.category,
+    rating: DEFAULT_BOOK_VALUES.rating,
+    reviewsCount: DEFAULT_BOOK_VALUES.reviewsCount,
+    pages: DEFAULT_BOOK_VALUES.pages,
+    publisher: DEFAULT_BOOK_VALUES.publisher,
+    publishedDate:
+      fetchedBook?.publishedDate || DEFAULT_BOOK_VALUES.publishedDate,
+    rentPrice: fetchedBook?.rentPrice || DEFAULT_BOOK_VALUES.rentPrice,
+    purchasePrice: fetchedBook?.cost || DEFAULT_BOOK_VALUES.purchasePrice,
+    quantityAvailable:
+      fetchedBook?.quantityAvailable ?? DEFAULT_BOOK_VALUES.quantityAvailable,
+  };
+
+  const isOutOfStock = book.quantityAvailable < 1;
 
   const { data: librariesData, loading: libsLoading } = useGetLibrariesQuery();
   const libraries = librariesData?.getLibraries || [];
@@ -103,7 +122,7 @@ export default function BookDetailPage() {
       variables: {
         input: [
           {
-            book: MOCK_BOOK.id, // Replace with actual book ID if fetched dynamically
+            book: book.id, // Replace with actual book ID if fetched dynamically
             library: selectedLibraryId,
             transactionType: transactionType,
           },
@@ -111,6 +130,8 @@ export default function BookDetailPage() {
       },
     });
   };
+
+  if (bookLoading) return <MyLoading />;
 
   return (
     <>
@@ -127,11 +148,11 @@ export default function BookDetailPage() {
           href="/dashboard/user?category=Fiction"
           className="hover:text-white transition-colors"
         >
-          {MOCK_BOOK.category}
+          {book.category}
         </Link>
         <ChevronRight className="h-4 w-4" />
         <span className="text-white font-medium truncate max-w-[200px]">
-          {MOCK_BOOK.title}
+          {book.title}
         </span>
       </div>
 
@@ -142,8 +163,8 @@ export default function BookDetailPage() {
           <div className="relative aspect-[3/4] w-full rounded-2xl overflow-hidden shadow-2xl border border-white/10 group">
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-10" />
             <Image
-              src={MOCK_BOOK.coverImage}
-              alt={MOCK_BOOK.title}
+              src={book.coverImage}
+              alt={book.title}
               fill
               priority
               sizes="(max-width: 768px) 100vw, 33vw"
@@ -177,16 +198,14 @@ export default function BookDetailPage() {
               <span className="text-zinc-500 text-xs font-semibold uppercase tracking-wider">
                 Pages
               </span>
-              <span className="text-white font-medium mt-1">
-                {MOCK_BOOK.pages}
-              </span>
+              <span className="text-white font-medium mt-1">{book.pages}</span>
             </div>
             <div className="flex flex-col">
               <span className="text-zinc-500 text-xs font-semibold uppercase tracking-wider">
                 Rating
               </span>
               <span className="text-white font-medium mt-1 flex items-center justify-center gap-1">
-                {MOCK_BOOK.rating}{" "}
+                {book.rating}{" "}
                 <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />
               </span>
             </div>
@@ -205,15 +224,15 @@ export default function BookDetailPage() {
           <div className="xl:col-span-7 flex flex-col pt-2">
             <div className="mb-4">
               <span className="inline-flex text-xs font-semibold tracking-widest uppercase text-purple-400 bg-purple-500/10 border border-purple-500/20 px-3 py-1 rounded-full mb-3">
-                {MOCK_BOOK.category}
+                {book.category}
               </span>
               <h1 className="text-4xl sm:text-5xl font-bold text-white tracking-tight leading-tight mb-2">
-                {MOCK_BOOK.title}
+                {book.title}
               </h1>
               <p className="text-xl text-zinc-400 font-medium">
                 by{" "}
                 <span className="text-purple-300 hover:text-purple-200 cursor-pointer transition-colors underline underline-offset-4 decoration-purple-500/30">
-                  {MOCK_BOOK.author}
+                  {book.author}
                 </span>
               </p>
             </div>
@@ -228,10 +247,8 @@ export default function BookDetailPage() {
                 ))}
               </div>
               <div className="text-sm text-zinc-400">
-                <span className="text-white font-medium">
-                  {MOCK_BOOK.rating}
-                </span>{" "}
-                ({MOCK_BOOK.reviewsCount.toLocaleString()} reviews)
+                <span className="text-white font-medium">{book.rating}</span> (
+                {book.reviewsCount.toLocaleString()} reviews)
               </div>
             </div>
 
@@ -240,7 +257,7 @@ export default function BookDetailPage() {
                 About this book
               </h3>
               <p className="text-zinc-300 leading-relaxed text-[15px]">
-                {MOCK_BOOK.description}
+                {book.description}
               </p>
             </div>
 
@@ -299,9 +316,15 @@ export default function BookDetailPage() {
                     <span className="text-zinc-400 font-medium">
                       Format: Printed Book
                     </span>
-                    <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">
-                      <ShieldCheck className="h-3.5 w-3.5" /> Fast Delivery
-                    </span>
+                    {isOutOfStock ? (
+                      <span className="flex items-center gap-1.5 text-xs font-semibold text-rose-400 bg-rose-500/10 px-2 py-1 rounded border border-rose-500/20">
+                        Out of Stock
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">
+                        <ShieldCheck className="h-3.5 w-3.5" /> Fast Delivery
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex flex-col gap-4 mb-6">
@@ -331,7 +354,7 @@ export default function BookDetailPage() {
                           Rent Monthly
                         </span>
                         <span className="text-3xl font-bold text-white">
-                          ${MOCK_BOOK.rentPrice}
+                          ₹{book.rentPrice}
                           <span className="text-sm font-medium text-zinc-500">
                             /mo
                           </span>
@@ -365,7 +388,7 @@ export default function BookDetailPage() {
                           Buy Permanent
                         </span>
                         <span className="text-3xl font-bold text-white">
-                          ${MOCK_BOOK.purchasePrice}
+                          ₹{book.purchasePrice}
                         </span>
                       </div>
                     </label>
@@ -421,8 +444,8 @@ export default function BookDetailPage() {
                               </div>
                               <span className="text-xs font-bold text-emerald-400 shrink-0">
                                 {transactionType === "BORROW"
-                                  ? `$${MOCK_BOOK.rentPrice}/mo`
-                                  : `$${MOCK_BOOK.purchasePrice}`}
+                                  ? `₹${book.rentPrice}/mo`
+                                  : `₹${book.purchasePrice}`}
                               </span>
                             </div>
                           </label>
@@ -432,7 +455,9 @@ export default function BookDetailPage() {
                   </div>
 
                   <Button
-                    disabled={!selectedLibraryId || isPlacingOrder}
+                    disabled={
+                      !selectedLibraryId || isPlacingOrder || isOutOfStock
+                    }
                     onClick={handlePlaceOrder}
                     className="w-full h-14 rounded-xl bg-purple-500 hover:bg-purple-600 text-white font-bold text-lg shadow-[0_0_20px_-3px_rgba(168,85,247,0.4)] transition-all disabled:opacity-50 disabled:shadow-none"
                   >
@@ -441,6 +466,8 @@ export default function BookDetailPage() {
                         <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>{" "}
                         Processing...
                       </span>
+                    ) : isOutOfStock ? (
+                      "Currently Unavailable"
                     ) : (
                       "Proceed to Checkout"
                     )}

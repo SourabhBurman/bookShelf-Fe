@@ -29,8 +29,12 @@ export function DashboardShell({
   const pathname = usePathname();
 
   const handleLogout = async () => {
-    await logout();
-    router.push("/login");
+    try {
+      await logout();
+      router.push("/login");
+    } catch (e) {
+      console.error("Logout failed", e);
+    }
   };
   const finalUserName =
     (user?.name || user?.email || "Guest").charAt(0).toUpperCase() +
@@ -96,25 +100,25 @@ export function DashboardShell({
                 <div key={index}>
                   <Link
                     href={item.href}
-                  className={cn(
-                    "group flex items-center rounded-md px-3 py-2.5 text-sm font-medium hover:bg-zinc-800/50 hover:text-white transition-all",
-                    "focus:outline-none focus:ring-2 focus:ring-purple-500/20",
-                    isActive
-                      ? "bg-purple-500/10 text-purple-400"
-                      : "text-zinc-400",
-                  )}
-                >
-                  <div
                     className={cn(
-                      "mr-3 bg-transparent transition-colors",
+                      "group flex items-center rounded-md px-3 py-2.5 text-sm font-medium hover:bg-zinc-800/50 hover:text-white transition-all",
+                      "focus:outline-none focus:ring-2 focus:ring-purple-500/20",
                       isActive
-                        ? "text-purple-400"
-                        : "text-zinc-400 group-hover:text-purple-400",
+                        ? "bg-purple-500/10 text-purple-400"
+                        : "text-zinc-400",
                     )}
                   >
-                    {item.icon}
-                  </div>
-                  {item.title}
+                    <div
+                      className={cn(
+                        "mr-3 bg-transparent transition-colors",
+                        isActive
+                          ? "text-purple-400"
+                          : "text-zinc-400 group-hover:text-purple-400",
+                      )}
+                    >
+                      {item.icon}
+                    </div>
+                    {item.title}
                   </Link>
                 </div>
               );

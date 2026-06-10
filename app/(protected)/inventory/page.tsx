@@ -17,6 +17,11 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { User_Roles } from "@/graphql/generated/graphql";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
+import { BookImportFlow } from "@/components/library/BookImportFlow";
 
 const mockInventory = [
   {
@@ -58,6 +63,28 @@ const mockInventory = [
 ];
 
 export default function OwnerInventoryPage() {
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const router = useRouter();
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  if (isAuthLoading) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-500 border-t-transparent" />
+      </div>
+    );
+  }
+
+  // Redirect to setup if no library is owned
+  if (!user?.library_owned) {
+    router.push("/inventory/setup");
+    return null;
+  }
+
+  if (user?.role?.type !== User_Roles.LibraryOwner) {
+    return <Forbidden />;
+  }
+
   return (
     <div className="flex flex-col gap-8">
       {/* Header Actions */}
@@ -77,10 +104,23 @@ export default function OwnerInventoryPage() {
             <Filter className="mr-2 h-4 w-4" />
             Filter
           </Button>
-          <Button className="bg-purple-500 hover:bg-purple-600 text-white shadow-lg shadow-purple-500/20 flex-1 sm:flex-none">
-            <Plus className="mr-2 h-4 w-4" />
-            Add Book
-          </Button>
+          <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-purple-500 hover:bg-purple-600 text-white shadow-lg shadow-purple-500/20 flex-1 sm:flex-none">
+                <Plus className="mr-2 h-4 w-4" />
+                Import Books
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl border-white/10 bg-zinc-950 p-6 sm:p-8">
+              <DialogTitle className="sr-only">Import Books</DialogTitle>
+              {user?.library_owned?.id && (
+                <BookImportFlow
+                  libraryId={user.library_owned.id}
+                  onComplete={() => setIsImportModalOpen(false)}
+                />
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 

@@ -11,6 +11,11 @@ export const GET_USER = gql`
         displayName
         type
       }
+      library_owned {
+        id
+        name
+        address
+      }
     }
   }
 `;

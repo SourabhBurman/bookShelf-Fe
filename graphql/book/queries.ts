@@ -11,6 +11,8 @@ export const GET_BOOKS = gql`
       cost
       rentPrice
       publishedDate
+      coverImage
+      author
     }
   }
 `;
@@ -26,6 +28,8 @@ export const GET_BOOK_BY_ID = gql`
       cost
       rentPrice
       publishedDate
+      coverImage
+      author
     }
   }
 `;

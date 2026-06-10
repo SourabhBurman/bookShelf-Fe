@@ -12,9 +12,11 @@ export type Scalars = {
 
 export type Book = {
   __typename?: 'Book';
+  author?: Maybe<Scalars['String']['output']>;
   cost?: Maybe<Scalars['Float']['output']>;
+  coverImage?: Maybe<Scalars['String']['output']>;
   description?: Maybe<Scalars['String']['output']>;
-  genre?: Maybe<Genre>;
+  genre?: Maybe<Scalars['String']['output']>;
   id?: Maybe<Scalars['ID']['output']>;
   name?: Maybe<Scalars['String']['output']>;
   publishedDate?: Maybe<Scalars['Date']['output']>;
@@ -53,6 +55,11 @@ export type BookPaginationInput = {
   pageSize?: InputMaybe<Scalars['Int']['input']>;
 };
 
+export type BookQuantityInput = {
+  bookId: Scalars['ID']['input'];
+  quantity: Scalars['Int']['input'];
+};
+
 export type CreateUserInput = {
   email: Scalars['String']['input'];
   gender?: InputMaybe<Gender>;
@@ -72,17 +79,15 @@ export enum Genre {
   Business = 'Business',
   Drama = 'Drama',
   Fantasy = 'Fantasy',
-  Fiction = 'Fiction',
   Finance = 'Finance',
   Health = 'Health',
-  Help = 'Help',
   History = 'History',
   Horror = 'Horror',
   Mystery = 'Mystery',
   Other = 'Other',
   Romance = 'Romance',
-  Science = 'Science',
-  Self = 'Self',
+  SciFi = 'SciFi',
+  SelfHelp = 'SelfHelp',
   Technology = 'Technology',
   Thriller = 'Thriller'
 }
@@ -97,6 +102,13 @@ export type Library = {
   balance?: Maybe<Scalars['Int']['output']>;
   id?: Maybe<Scalars['ID']['output']>;
   name?: Maybe<Scalars['String']['output']>;
+};
+
+export type LibraryBookInput = {
+  books?: InputMaybe<Array<BookQuantityInput>>;
+  isAll?: InputMaybe<Scalars['Boolean']['input']>;
+  library: Scalars['ID']['input'];
+  quantityForIsAll?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type LibraryInput = {
@@ -127,8 +139,7 @@ export type Mutation = {
 
 
 export type MutationAddBookToLibraryArgs = {
-  id: Scalars['ID']['input'];
-  input: LibraryInput;
+  input: LibraryBookInput;
 };
 
 
@@ -399,6 +410,7 @@ export type User = {
   email?: Maybe<Scalars['String']['output']>;
   gender?: Maybe<Gender>;
   id?: Maybe<Scalars['ID']['output']>;
+  library_owned?: Maybe<Library>;
   name?: Maybe<Scalars['String']['output']>;
   refreshToken?: Maybe<Scalars['String']['output']>;
   role?: Maybe<Role>;
