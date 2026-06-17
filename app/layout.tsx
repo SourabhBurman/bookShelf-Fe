@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { ApolloWrapper } from "@/context/ApolloWrapper";
 import NextTopLoader from "nextjs-toploader";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,9 +37,16 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased bg-zinc-950 overscroll-none`}
     >
       <body className="min-h-full flex flex-col bg-zinc-950 overscroll-none text-zinc-50">
-        <NextTopLoader color="#a855f7" showSpinner={false} shadow="0 0 10px #a855f7,0 0 5px #a855f7" />
+        <NextTopLoader
+          color="#a855f7"
+          showSpinner={false}
+          shadow="0 0 10px #a855f7,0 0 5px #a855f7"
+        />
         <ApolloWrapper>
-          <AuthProvider hasInitialToken={hasInitialToken}>{children}</AuthProvider>
+          <AuthProvider hasInitialToken={hasInitialToken}>
+            {children}
+            <Toaster theme="dark" position="bottom-right" />
+          </AuthProvider>
         </ApolloWrapper>
       </body>
     </html>

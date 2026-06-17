@@ -121,6 +121,7 @@ export type Mutation = {
   addBookToLibrary?: Maybe<Response>;
   createBook: Book;
   createLibrary?: Maybe<Library>;
+  createPaymentIntent: PaymentIntentResponse;
   createPermission: Permission;
   createRole?: Maybe<Role>;
   deleteBook?: Maybe<Response>;
@@ -150,6 +151,11 @@ export type MutationCreateBookArgs = {
 
 export type MutationCreateLibraryArgs = {
   input: LibraryInput;
+};
+
+
+export type MutationCreatePaymentIntentArgs = {
+  input: PlaceOrderInput;
 };
 
 
@@ -240,11 +246,26 @@ export enum OperatorFields {
 export type Order = {
   __typename?: 'Order';
   book?: Maybe<Book>;
+  createdAt?: Maybe<Scalars['Date']['output']>;
+  current_status?: Maybe<OrderStatus>;
   expectedReturnDate?: Maybe<Scalars['Date']['output']>;
   id?: Maybe<Scalars['ID']['output']>;
-  transactionDate?: Maybe<Scalars['Date']['output']>;
-  transactionType?: Maybe<TransactionType>;
-  user?: Maybe<User>;
+  library?: Maybe<Library>;
+  transactions?: Maybe<Array<Maybe<Transaction>>>;
+  updatedAt?: Maybe<Scalars['Date']['output']>;
+};
+
+export enum OrderStatus {
+  Borrowed = 'Borrowed',
+  Purchased = 'Purchased',
+  Returned = 'Returned'
+}
+
+export type PaymentIntentResponse = {
+  __typename?: 'PaymentIntentResponse';
+  amount: Scalars['Int']['output'];
+  currency: Scalars['String']['output'];
+  razorpayOrderId: Scalars['String']['output'];
 };
 
 export type Permission = {
@@ -369,13 +390,15 @@ export type RoleWithPermissions = {
 
 export type Transaction = {
   __typename?: 'Transaction';
-  book?: Maybe<Book>;
-  dueDate?: Maybe<Scalars['Date']['output']>;
+  amount?: Maybe<Scalars['Int']['output']>;
+  createdAt?: Maybe<Scalars['Date']['output']>;
   id?: Maybe<Scalars['ID']['output']>;
-  quantity?: Maybe<Scalars['Int']['output']>;
+  order?: Maybe<Order>;
+  paymentStatus?: Maybe<Scalars['String']['output']>;
+  razorpayOrderId?: Maybe<Scalars['String']['output']>;
+  razorpayPaymentId?: Maybe<Scalars['String']['output']>;
   transactionDate?: Maybe<Scalars['Date']['output']>;
   transactionType?: Maybe<TransactionType>;
-  user?: Maybe<ReturnUser>;
 };
 
 export enum TransactionType {

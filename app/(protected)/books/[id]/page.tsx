@@ -16,9 +16,18 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useGetLibrariesQuery } from "@/graphql/library/hooks";
 import { useMutation, useQuery } from "@apollo/client/react";
-import { PLACE_ORDER } from "@/graphql/order/mutations";
+import { CreatePaymentIntentDocument } from "@/graphql/order/mutations.generated";
 import MyLoading from "@/components/myLoading";
 import { GetBookByIdDocument } from "@/graphql/book/queries.generated";
+import { TransactionType } from "@/graphql/generated/graphql";
+import { toast } from "sonner";
+
+declare global {
+  interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Razorpay: any;
+  }
+}
 
 // Placeholder data since we don't have DB context here
 const DEFAULT_BOOK_VALUES = {
@@ -61,8 +70,8 @@ const MOCK_REVIEWS = [
 
 export default function BookDetailPage() {
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const [transactionType, setTransactionType] = useState<"BORROW" | "PURCHASE">(
-    "BORROW",
+  const [transactionType, setTransactionType] = useState<TransactionType>(
+    TransactionType.Borrow,
   );
   const [selectedLibraryId, setSelectedLibraryId] = useState<string | null>(
     null,
@@ -106,27 +115,64 @@ export default function BookDetailPage() {
   const { data: librariesData, loading: libsLoading } = useGetLibrariesQuery();
   const libraries = librariesData?.getLibraries || [];
 
-  const [placeOrder, { loading: isPlacingOrder }] = useMutation(PLACE_ORDER, {
-    onCompleted: () => {
-      alert("Order placed successfully!");
-      router.push("/orders");
+  const [createPaymentIntent, { loading: isPlacingOrder }] = useMutation(
+    CreatePaymentIntentDocument,
+    {
+      onCompleted: async (data) => {
+        const intent = data.createPaymentIntent;
+        const res = await loadRazorpay();
+        if (!res) {
+          toast.error("Razorpay SDK failed to load. Are you online?");
+          return;
+        }
+
+        const options = {
+          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_dummy",
+          amount: intent.amount,
+          currency: intent.currency,
+          name: "BookShelf",
+          description: "Book Rental/Purchase",
+          order_id: intent.razorpayOrderId,
+          handler: function () {
+            router.push("/orders/success");
+          },
+          prefill: {
+            name: "BookShelf User",
+          },
+          theme: {
+            color: "#a855f7",
+          },
+        };
+
+        const RazorpayConstructor = window.Razorpay;
+        const paymentObject = new RazorpayConstructor(options);
+        paymentObject.open();
+      },
+      onError: (err) => {
+        toast.error(`Payment failed: ${err.message || "Something went wrong"}`);
+      },
     },
-    onError: (err) => {
-      alert(`Error placing order: ${err.message}`);
-    },
-  });
+  );
+
+  const loadRazorpay = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
 
   const handlePlaceOrder = () => {
     if (!selectedLibraryId) return;
-    placeOrder({
+    createPaymentIntent({
       variables: {
-        input: [
-          {
-            book: book.id, // Replace with actual book ID if fetched dynamically
-            library: selectedLibraryId,
-            transactionType: transactionType,
-          },
-        ],
+        input: {
+          book: book.id,
+          library: selectedLibraryId,
+          transactionType,
+        },
       },
     });
   };
@@ -330,26 +376,26 @@ export default function BookDetailPage() {
                   <div className="flex flex-col gap-4 mb-6">
                     {/* RENT OPTION */}
                     <label
-                      onClick={() => setTransactionType("BORROW")}
-                      className={`relative flex cursor-pointer rounded-xl border p-4 shadow-sm transition-colors ${transactionType === "BORROW" ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-white/5 hover:border-white/20"}`}
+                      onClick={() => setTransactionType(TransactionType.Borrow)}
+                      className={`relative flex cursor-pointer rounded-xl border p-4 shadow-sm transition-colors ${transactionType === TransactionType.Borrow ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-white/5 hover:border-white/20"}`}
                     >
                       <input
                         type="radio"
                         name="purchaseType"
                         className="sr-only"
-                        checked={transactionType === "BORROW"}
+                        checked={transactionType === TransactionType.Borrow}
                         readOnly
                       />
                       <div
-                        className={`absolute top-4 right-4 h-5 w-5 rounded-full border-2 flex items-center justify-center ${transactionType === "BORROW" ? "border-purple-500 border-4 bg-zinc-950" : "border-zinc-600 bg-zinc-900"}`}
+                        className={`absolute top-4 right-4 h-5 w-5 rounded-full border-2 flex items-center justify-center ${transactionType === TransactionType.Borrow ? "border-purple-500 border-4 bg-zinc-950" : "border-zinc-600 bg-zinc-900"}`}
                       >
-                        {transactionType === "BORROW" && (
+                        {transactionType === TransactionType.Borrow && (
                           <div className="h-2 w-2 rounded-full bg-purple-500" />
                         )}
                       </div>
                       <div className="flex flex-col">
                         <span
-                          className={`text-sm font-medium uppercase tracking-wider mb-1 ${transactionType === "BORROW" ? "text-zinc-300" : "text-zinc-400"}`}
+                          className={`text-sm font-medium uppercase tracking-wider mb-1 ${transactionType === TransactionType.Borrow ? "text-zinc-300" : "text-zinc-400"}`}
                         >
                           Rent Monthly
                         </span>
@@ -364,26 +410,28 @@ export default function BookDetailPage() {
 
                     {/* BUY OPTION */}
                     <label
-                      onClick={() => setTransactionType("PURCHASE")}
-                      className={`relative flex cursor-pointer rounded-xl border p-4 shadow-sm transition-colors ${transactionType === "PURCHASE" ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-white/5 hover:border-white/20"}`}
+                      onClick={() =>
+                        setTransactionType(TransactionType.Purchase)
+                      }
+                      className={`relative flex cursor-pointer rounded-xl border p-4 shadow-sm transition-colors ${transactionType === TransactionType.Purchase ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-white/5 hover:border-white/20"}`}
                     >
                       <input
                         type="radio"
                         name="purchaseType"
                         className="sr-only"
-                        checked={transactionType === "PURCHASE"}
+                        checked={transactionType === TransactionType.Purchase}
                         readOnly
                       />
                       <div
-                        className={`absolute top-4 right-4 h-5 w-5 rounded-full border-2 flex items-center justify-center ${transactionType === "PURCHASE" ? "border-purple-500 border-4 bg-zinc-950" : "border-zinc-600 bg-zinc-900"}`}
+                        className={`absolute top-4 right-4 h-5 w-5 rounded-full border-2 flex items-center justify-center ${transactionType === TransactionType.Purchase ? "border-purple-500 border-4 bg-zinc-950" : "border-zinc-600 bg-zinc-900"}`}
                       >
-                        {transactionType === "PURCHASE" && (
+                        {transactionType === TransactionType.Purchase && (
                           <div className="h-2 w-2 rounded-full bg-purple-500" />
                         )}
                       </div>
                       <div className="flex flex-col">
                         <span
-                          className={`text-sm font-medium uppercase tracking-wider mb-1 ${transactionType === "PURCHASE" ? "text-zinc-300" : "text-zinc-400"}`}
+                          className={`text-sm font-medium uppercase tracking-wider mb-1 ${transactionType === TransactionType.Purchase ? "text-zinc-300" : "text-zinc-400"}`}
                         >
                           Buy Permanent
                         </span>
@@ -443,7 +491,7 @@ export default function BookDetailPage() {
                                 </div>
                               </div>
                               <span className="text-xs font-bold text-emerald-400 shrink-0">
-                                {transactionType === "BORROW"
+                                {transactionType === TransactionType.Borrow
                                   ? `₹${book.rentPrice}/mo`
                                   : `₹${book.purchasePrice}`}
                               </span>

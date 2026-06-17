@@ -66,7 +66,7 @@ export const AuthProvider = ({
     };
 
     fetchUser();
-  }, [getUser, error, hasInitialToken]);
+  }, [hasInitialToken]);
 
   const logout = async () => {
     try {

@@ -46,7 +46,7 @@ export function DashboardShell({
 
   // Derive title from pathname
   const routeTitles: Record<string, string> = {
-    "/dashboard": "Dashboard",
+    "/": "Dashboard",
     "/inventory": "Library Inventory",
     "/orders": "Rentals & History",
     "/financials": "Financial Analytics",
@@ -92,7 +92,7 @@ export function DashboardShell({
           <nav className="grid items-start gap-2">
             {activeNavItems.map((item, index) => {
               const isActive =
-                item.href === "/dashboard"
+                item.href === "/"
                   ? pathname === item.href
                   : pathname.startsWith(item.href);
 

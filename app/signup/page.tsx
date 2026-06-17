@@ -69,7 +69,7 @@ export default function SignupPage() {
 
   useEffect(() => {
     if (user) {
-      router.push("/dashboard");
+      router.push("/");
     }
   }, [user, router]);
 
@@ -97,7 +97,7 @@ export default function SignupPage() {
       const loggedInUser = res.user || res;
 
       setUser(loggedInUser);
-      router.push("/dashboard");
+      router.push("/");
     } catch (error) {
       if (error instanceof Error) {
         setErrorMessage(error.message);

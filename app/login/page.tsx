@@ -57,7 +57,7 @@ export default function LoginPage() {
         setUser(userData.data.getUser);
       }
 
-      router.push("/dashboard");
+      router.push("/");
     } catch (error) {
       if (error instanceof Error) {
         setErrorMessage(error.message);

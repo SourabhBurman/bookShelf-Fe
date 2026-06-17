@@ -4,17 +4,25 @@ export const GET_ORDERS = gql`
   query GetOrders {
     getOrders {
       id
-      user {
-        name
-        email
-      }
       book {
         name
         cost
+        coverImage
+        author
       }
-      transactionType
-      transactionDate
+      library {
+        id
+        name
+        address
+      }
       expectedReturnDate
+      current_status
+      transactions {
+        transactionType
+        transactionDate
+        paymentStatus
+        amount
+      }
     }
   }
 `;

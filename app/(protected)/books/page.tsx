@@ -172,7 +172,7 @@ function BooksExploreContent() {
           <BookOpen className="h-12 w-12 text-zinc-600 mb-4" />
           <h3 className="text-lg font-bold text-white mb-2">No books found</h3>
           <p className="text-zinc-500 max-w-sm">
-            We couldn't find any books matching your current filters. Try
+            We couldn&apos;t find any books matching your current filters. Try
             adjusting your search criteria.
           </p>
         </div>

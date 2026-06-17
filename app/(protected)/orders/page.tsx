@@ -1,75 +1,84 @@
 "use client";
 
-import { useAuth } from "@/context/AuthContext";
-import { Forbidden } from "@/components/ui/Forbidden";
-import { DashboardShell, NavItem } from "@/components/layout/DashboardShell";
-import {
-  Search,
-  Home,
-  Library,
-  Heart,
-  History,
-  Clock,
-  BookOpen,
-  AlertTriangle,
-  CheckCircle2,
-} from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import MyLoading from "@/components/myLoading";
 import { Button } from "@/components/ui/button";
-
-const userNavItems: NavItem[] = [
-  { title: "Home", href: "/dashboard", icon: <Home /> },
-  { title: "My Rentals", href: "/orders", icon: <Clock /> },
-  { title: "Saved Books", href: "/dashboard/saved", icon: <Heart /> },
-  {
-    title: "Nearby Libraries",
-    href: "/dashboard/libraries",
-    icon: <Library />,
-  },
-  { title: "Order History", href: "/orders", icon: <History /> },
-];
-
-const activeRentals = [
-  {
-    id: "ORD-9912",
-    bookTitle: "Sapiens: A Brief History",
-    author: "Yuval Noah Harari",
-    library: "Central City Library",
-    dueIn: "2 days",
-    status: "Active",
-    image:
-      "https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=800&auto=format&fit=crop",
-  },
-  {
-    id: "ORD-9915",
-    bookTitle: "Atomic Habits",
-    author: "James Clear",
-    library: "Downtown Branch",
-    dueIn: "Overdue",
-    status: "Overdue",
-    image:
-      "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?q=80&w=800&auto=format&fit=crop",
-  },
-];
-
-const pastOrders = [
-  {
-    id: "ORD-9801",
-    bookTitle: "The Midnight Library",
-    returnDate: "Oct 12, 2023",
-    status: "Returned",
-    fee: "$2.99",
-  },
-  {
-    id: "ORD-9755",
-    bookTitle: "Dune",
-    returnDate: "Sep 28, 2023",
-    status: "Returned",
-    fee: "$4.00",
-  },
-];
+import { Card, CardContent } from "@/components/ui/card";
+import { OrderStatus, TransactionType } from "@/graphql/generated/graphql";
+import { useGetOrdersQuery } from "@/graphql/order/hooks";
+import {
+  AlertTriangle,
+  BookOpen,
+  CheckCircle2,
+  Clock,
+  History,
+  Library,
+} from "lucide-react";
+import { useEffect } from "react";
 
 export default function UserOrdersPage() {
+  const { fetchOrders, ordersLoading, ordersError, ordersData } =
+    useGetOrdersQuery();
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  if (ordersLoading) return <MyLoading />;
+  if (ordersError?.message)
+    return <div>Error fetching orders: {ordersError?.message}</div>;
+
+  const activeRentals = ordersData
+    .filter((o) => o.current_status === OrderStatus.Borrowed)
+    .map((o) => {
+      let dueIn = "N/A";
+      let status = "Active";
+      if (o.expectedReturnDate) {
+        const diffTime =
+          new Date(o.expectedReturnDate as Date).getTime() -
+          new Date().getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays < 0) {
+          dueIn = "Overdue";
+          status = "Overdue";
+        } else {
+          dueIn = `${diffDays} days`;
+        }
+      }
+      return {
+        id: o.id || "",
+        bookTitle: o.book?.name || "Unknown Book",
+        author: o.book?.author || "Unknown Author",
+        library: "Local Library",
+        dueIn,
+        status,
+        image:
+          o.book?.coverImage ||
+          "https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=800&auto=format&fit=crop",
+      };
+    });
+
+  const pastOrders = ordersData
+    .filter(
+      (o) =>
+        o.current_status === OrderStatus.Returned ||
+        o.current_status === OrderStatus.Purchased ||
+        o.transactions?.[0]?.transactionType === TransactionType.Purchase,
+    )
+    .map((o) => ({
+      id: o.id || "",
+      bookTitle: o.book?.name || "Unknown Book",
+      returnDate: o.transactions?.[0]?.transactionDate
+        ? new Date(
+            o.transactions[0].transactionDate as Date,
+          ).toLocaleDateString()
+        : "N/A",
+      status:
+        o.current_status === OrderStatus.Purchased ? "Purchased" : "Returned",
+      fee: o.transactions?.[0]?.amount
+        ? `₹${o.transactions[0].amount / 100}`
+        : "N/A",
+    }));
+
   return (
     <div className="flex flex-col gap-10">
       {/* Active Rentals */}
