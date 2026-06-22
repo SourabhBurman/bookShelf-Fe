@@ -15,7 +15,7 @@ import { useAuth } from "@/context/AuthContext";
 import { User_Roles } from "@/graphql/generated/graphql";
 import { BookOpen, Filter, MoreHorizontal, Plus, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const mockInventory = [
   {
@@ -61,6 +61,12 @@ export default function OwnerInventoryPage() {
   const router = useRouter();
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
+  useEffect(() => {
+    if (!isAuthLoading && user && !user.library_owned && user.role?.type === User_Roles.LibraryOwner) {
+      router.push("/inventory/setup");
+    }
+  }, [isAuthLoading, user, router]);
+
   if (isAuthLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
@@ -71,7 +77,6 @@ export default function OwnerInventoryPage() {
 
   // Redirect to setup if no library is owned
   if (!user?.library_owned) {
-    router.push("/inventory/setup");
     return null;
   }
 

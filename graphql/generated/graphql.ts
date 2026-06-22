@@ -129,7 +129,6 @@ export type Mutation = {
   deletePermission: Response;
   deleteRole?: Maybe<Response>;
   deleteUser?: Maybe<Response>;
-  placeOrder: Array<Maybe<Order>>;
   returnOrder: Array<Maybe<Order>>;
   updateBook?: Maybe<Book>;
   updateLibrary?: Maybe<Library>;
@@ -191,11 +190,6 @@ export type MutationDeleteRoleArgs = {
 
 export type MutationDeleteUserArgs = {
   id: Scalars['ID']['input'];
-};
-
-
-export type MutationPlaceOrderArgs = {
-  input: Array<InputMaybe<PlaceOrderInput>>;
 };
 
 
@@ -264,8 +258,8 @@ export enum OrderStatus {
 export type PaymentIntentResponse = {
   __typename?: 'PaymentIntentResponse';
   amount: Scalars['Int']['output'];
+  clientSecret: Scalars['String']['output'];
   currency: Scalars['String']['output'];
-  razorpayOrderId: Scalars['String']['output'];
 };
 
 export type Permission = {
@@ -281,9 +275,9 @@ export type PermissionInput = {
 };
 
 export type PlaceOrderInput = {
-  book: Scalars['ID']['input'];
+  bookId: Scalars['ID']['input'];
   expectedReturnDate?: InputMaybe<Scalars['Date']['input']>;
-  library: Scalars['ID']['input'];
+  libraryId: Scalars['ID']['input'];
   transactionType: TransactionType;
 };
 
@@ -395,8 +389,7 @@ export type Transaction = {
   id?: Maybe<Scalars['ID']['output']>;
   order?: Maybe<Order>;
   paymentStatus?: Maybe<Scalars['String']['output']>;
-  razorpayOrderId?: Maybe<Scalars['String']['output']>;
-  razorpayPaymentId?: Maybe<Scalars['String']['output']>;
+  stripePaymentIntentId?: Maybe<Scalars['String']['output']>;
   transactionDate?: Maybe<Scalars['Date']['output']>;
   transactionType?: Maybe<TransactionType>;
 };

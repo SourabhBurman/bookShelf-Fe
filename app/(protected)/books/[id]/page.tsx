@@ -21,6 +21,7 @@ import MyLoading from "@/components/myLoading";
 import { GetBookByIdDocument } from "@/graphql/book/queries.generated";
 import { TransactionType } from "@/graphql/generated/graphql";
 import { toast } from "sonner";
+import { StripePaymentModal } from "@/components/StripePaymentModal";
 
 declare global {
   interface Window {
@@ -73,9 +74,12 @@ export default function BookDetailPage() {
   const [transactionType, setTransactionType] = useState<TransactionType>(
     TransactionType.Borrow,
   );
+  const [borrowDays, setBorrowDays] = useState(1);
   const [selectedLibraryId, setSelectedLibraryId] = useState<string | null>(
     null,
   );
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+
   const router = useRouter();
   const params = useParams();
   const bookId = params?.id as string;
@@ -120,33 +124,11 @@ export default function BookDetailPage() {
     {
       onCompleted: async (data) => {
         const intent = data.createPaymentIntent;
-        const res = await loadRazorpay();
-        if (!res) {
-          toast.error("Razorpay SDK failed to load. Are you online?");
-          return;
+        if (intent.clientSecret) {
+          setClientSecret(intent.clientSecret);
+        } else {
+          toast.error("Failed to generate payment intent.");
         }
-
-        const options = {
-          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_dummy",
-          amount: intent.amount,
-          currency: intent.currency,
-          name: "BookShelf",
-          description: "Book Rental/Purchase",
-          order_id: intent.razorpayOrderId,
-          handler: function () {
-            router.push("/orders/success");
-          },
-          prefill: {
-            name: "BookShelf User",
-          },
-          theme: {
-            color: "#a855f7",
-          },
-        };
-
-        const RazorpayConstructor = window.Razorpay;
-        const paymentObject = new RazorpayConstructor(options);
-        paymentObject.open();
       },
       onError: (err) => {
         toast.error(`Payment failed: ${err.message || "Something went wrong"}`);
@@ -154,24 +136,23 @@ export default function BookDetailPage() {
     },
   );
 
-  const loadRazorpay = () => {
-    return new Promise((resolve) => {
-      const script = document.createElement("script");
-      script.src = "https://checkout.razorpay.com/v1/checkout.js";
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
-
   const handlePlaceOrder = () => {
     if (!selectedLibraryId) return;
+
+    let expectedReturnDate = undefined;
+    if (transactionType === TransactionType.Borrow) {
+      const date = new Date();
+      date.setDate(date.getDate() + borrowDays);
+      expectedReturnDate = date.toISOString();
+    }
+
     createPaymentIntent({
       variables: {
         input: {
-          book: book.id,
-          library: selectedLibraryId,
+          bookId: book.id,
+          libraryId: selectedLibraryId,
           transactionType,
+          ...(expectedReturnDate ? { expectedReturnDate } : {}),
         },
       },
     });
@@ -181,6 +162,13 @@ export default function BookDetailPage() {
 
   return (
     <>
+      {clientSecret && (
+        <StripePaymentModal
+          clientSecret={clientSecret}
+          onSuccess={() => router.push("/orders/success")}
+          onCancel={() => setClientSecret(null)}
+        />
+      )}
       {/* Breadcrumbs */}
       <div className="flex items-center gap-2 text-sm text-zinc-400 mb-8 mt-2">
         <Link
@@ -377,7 +365,7 @@ export default function BookDetailPage() {
                     {/* RENT OPTION */}
                     <label
                       onClick={() => setTransactionType(TransactionType.Borrow)}
-                      className={`relative flex cursor-pointer rounded-xl border p-4 shadow-sm transition-colors ${transactionType === TransactionType.Borrow ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-white/5 hover:border-white/20"}`}
+                      className={`relative flex flex-col cursor-pointer rounded-xl border p-4 shadow-sm transition-colors ${transactionType === TransactionType.Borrow ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-white/5 hover:border-white/20"}`}
                     >
                       <input
                         type="radio"
@@ -397,15 +385,36 @@ export default function BookDetailPage() {
                         <span
                           className={`text-sm font-medium uppercase tracking-wider mb-1 ${transactionType === TransactionType.Borrow ? "text-zinc-300" : "text-zinc-400"}`}
                         >
-                          Rent Monthly
+                          Borrow Book
                         </span>
                         <span className="text-3xl font-bold text-white">
                           ₹{book.rentPrice}
                           <span className="text-sm font-medium text-zinc-500">
-                            /mo
+                            /day
                           </span>
                         </span>
                       </div>
+
+                      {transactionType === TransactionType.Borrow && (
+                        <div
+                          className="mt-4 pt-4 border-t border-white/10"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <label className="text-sm text-zinc-400 mb-2 block font-medium">
+                            Number of Days to Borrow:
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="365"
+                            value={borrowDays}
+                            onChange={(e) =>
+                              setBorrowDays(parseInt(e.target.value) || 1)
+                            }
+                            className="w-full bg-zinc-950/50 border border-white/10 rounded-lg px-3 py-2 text-white outline-none focus:border-purple-500 transition-colors"
+                          />
+                        </div>
+                      )}
                     </label>
 
                     {/* BUY OPTION */}
@@ -490,10 +499,22 @@ export default function BookDetailPage() {
                                   </span>
                                 </div>
                               </div>
-                              <span className="text-xs font-bold text-emerald-400 shrink-0">
-                                {transactionType === TransactionType.Borrow
-                                  ? `₹${book.rentPrice}/mo`
-                                  : `₹${book.purchasePrice}`}
+                              <span className="text-xs font-bold text-emerald-400 shrink-0 flex flex-col items-end">
+                                {transactionType === TransactionType.Borrow ? (
+                                  <>
+                                    <span>
+                                      ₹
+                                      {book.rentPrice * borrowDays +
+                                        0.5 * book.purchasePrice}{" "}
+                                      total
+                                    </span>
+                                    <span className="text-[10px] text-zinc-500 font-normal mt-0.5">
+                                      incl. ₹{0.5 * book.purchasePrice} security
+                                    </span>
+                                  </>
+                                ) : (
+                                  `₹${book.purchasePrice}`
+                                )}
                               </span>
                             </div>
                           </label>
