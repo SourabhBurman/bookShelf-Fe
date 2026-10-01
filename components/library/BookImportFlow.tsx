@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { AddBookToLibraryDocument } from "@/graphql/library/mutations.generated";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -99,7 +100,7 @@ export function BookImportFlow({
 
   useEffect(() => {
     getBooks();
-  }, []);
+  }, [getBooks]);
 
   if (loading) {
     return (
@@ -204,12 +205,14 @@ export function BookImportFlow({
                         }
                         className="border-white/20 data-[state=checked]:bg-purple-500 data-[state=checked]:border-purple-500"
                       />
-                      <div className="h-12 w-10 bg-zinc-800 rounded flex items-center justify-center shrink-0 border border-white/10 overflow-hidden">
+                      <div className="h-12 w-10 relative bg-zinc-800 rounded flex items-center justify-center shrink-0 border border-white/10 overflow-hidden">
                         {book.coverImage ? (
-                          <img
+                          <Image
                             src={book.coverImage}
                             alt={book.name || "Cover"}
-                            className="h-full w-full object-cover"
+                            fill
+                            sizes="40px"
+                            className="object-cover"
                           />
                         ) : (
                           <BookOpen className="h-4 w-4 text-zinc-500" />

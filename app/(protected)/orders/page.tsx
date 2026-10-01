@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import MyLoading from "@/components/myLoading";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,8 +12,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { OrderStatus } from "@/graphql/generated/graphql";
+import { OrderStatus, TransactionType } from "@/graphql/generated/graphql";
 import { useGetOrdersQuery } from "@/graphql/order/hooks";
+import { GetOrdersDocument } from "@/graphql/order/queries.generated";
+import { ReturnOrderDocument } from "@/graphql/order/mutations.generated";
+import { useMutation } from "@apollo/client/react";
 import {
   BookOpen,
   CheckCircle2,
@@ -22,18 +26,44 @@ import {
   Receipt,
   AlertTriangle,
   Library,
+  Undo2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { formatAmount } from "@/lib/utils";
 
 export default function UserOrdersPage() {
   const { fetchOrders, ordersLoading, ordersError, ordersData } =
     useGetOrdersQuery();
+  const [returnOrder, { loading: isReturning }] = useMutation(
+    ReturnOrderDocument,
+    { refetchQueries: [{ query: GetOrdersDocument }] },
+  );
+  const [returningId, setReturningId] = useState<string | null>(null);
 
   const [filter, setFilter] = useState<"ALL" | "ACTIVE" | "PAST">("ALL");
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [fetchOrders]);
+
+  const handleMarkReturned = async (orderId: string) => {
+    try {
+      setReturningId(orderId);
+      await returnOrder({
+        variables: {
+          input: [{ id: orderId, transactionType: TransactionType.Return }],
+        },
+      });
+      toast.success("Book marked as returned.");
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Failed to return this order",
+      );
+    } finally {
+      setReturningId(null);
+    }
+  };
 
   if (ordersLoading) return <MyLoading />;
   if (ordersError?.message)
@@ -135,10 +165,12 @@ export default function UserOrdersPage() {
               >
                 <CardContent className="p-4 flex gap-4 h-full">
                   <div className="w-20 shrink-0 relative rounded-md overflow-hidden shadow-lg border border-white/10">
-                    <img
+                    <Image
                       src={rental.image}
                       alt={rental.bookTitle}
-                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      fill
+                      sizes="80px"
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   </div>
                   <div className="flex flex-col justify-between flex-1 min-w-0">
@@ -273,11 +305,15 @@ export default function UserOrdersPage() {
                       className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border backdrop-blur-sm shadow-sm transition-all uppercase tracking-wider ${
                         order.isActive
                           ? "bg-purple-500/10 text-purple-300 border-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.15)] group-hover:bg-purple-500/20"
-                          : "bg-emerald-500/10 text-emerald-300 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.15)] group-hover:bg-emerald-500/20"
+                          : order.status === OrderStatus.Cancelled
+                            ? "bg-rose-500/10 text-rose-300 border-rose-500/30 shadow-[0_0_10px_rgba(244,63,94,0.15)] group-hover:bg-rose-500/20"
+                            : "bg-emerald-500/10 text-emerald-300 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.15)] group-hover:bg-emerald-500/20"
                       }`}
                     >
                       {order.isActive ? (
                         <div className="mr-1.5 h-1.5 w-1.5 rounded-full bg-purple-400 animate-pulse" />
+                      ) : order.status === OrderStatus.Cancelled ? (
+                        <AlertTriangle className="mr-1.5 h-3 w-3" />
                       ) : (
                         <CheckCircle2 className="mr-1.5 h-3 w-3" />
                       )}
@@ -285,6 +321,21 @@ export default function UserOrdersPage() {
                     </span>
                   </td>
                   <td className="px-5 py-3 text-right border-y border-r border-white/5 group-hover:border-purple-500/20 last:rounded-r-xl transition-colors">
+                    <div className="flex items-center justify-end gap-2">
+                      {order.isActive && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={isReturning && returningId === order.id}
+                          onClick={() => handleMarkReturned(order.id)}
+                          className="h-8 text-xs bg-white/5 hover:bg-emerald-500/20 hover:text-emerald-300 text-zinc-300 border border-white/10 hover:border-emerald-500/30 transition-all rounded-md"
+                        >
+                          <Undo2 className="mr-1.5 h-3.5 w-3.5" />
+                          {isReturning && returningId === order.id
+                            ? "Returning..."
+                            : "Mark Returned"}
+                        </Button>
+                      )}
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button
@@ -341,7 +392,7 @@ export default function UserOrdersPage() {
                                         </span>
                                         {t?.amount ? (
                                           <span className="text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1 rounded-md text-sm border border-emerald-500/20 shadow-sm flex items-center gap-1">
-                                            ₹{t.amount / 100}
+                                            ₹{formatAmount(t.amount / 100)}
                                           </span>
                                         ) : null}
                                       </div>
@@ -376,6 +427,7 @@ export default function UserOrdersPage() {
                         </div>
                       </DialogContent>
                     </Dialog>
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -1,160 +1,187 @@
 "use client";
 
+import { useEffect, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Forbidden } from "@/components/ui/Forbidden";
-import { DashboardShell } from "@/components/layout/DashboardShell";
-import {
-  Globe,
-  Building,
-  Users,
-  ShieldAlert,
-  Activity,
-  Search,
-  AlertTriangle,
-  AlertCircle,
-  FileText,
-  CheckCircle2,
-} from "lucide-react";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { User_Roles } from "@/graphql/generated/graphql";
+import { AlertCircle, AlertTriangle, Building, CheckCircle2, RotateCcw, Users } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { useGetLibrariesQuery } from "@/graphql/library/hooks";
+import { useGetUsersQuery } from "@/graphql/user/hooks";
 
-const adminNavItems = [
-  { title: "Platform Overview", href: "/dashboard", icon: <Globe /> },
-  { title: "Libraries", href: "/dashboard/libraries", icon: <Building /> },
-  { title: "Users", href: "/dashboard/users", icon: <Users /> },
-  { title: "Reports", href: "/dashboard/reports", icon: <ShieldAlert /> },
-  { title: "System Health", href: "/dashboard/health", icon: <Activity /> },
-];
-
-const mockReports = [
-  {
-    id: "RPT-001",
-    type: "Fraud",
-    description: "Suspicious bulk rental activity",
-    status: "open",
-    severity: "high",
-    date: "2 hours ago",
-  },
-  {
-    id: "RPT-002",
-    type: "Dispute",
-    description: "User disputes overdue fines",
-    status: "investigating",
-    severity: "medium",
-    date: "5 hours ago",
-  },
-  {
-    id: "RPT-003",
-    type: "System",
-    description: "Payment gateway timeout spikes",
-    status: "resolved",
-    severity: "high",
-    date: "1 day ago",
-  },
-  {
-    id: "RPT-004",
-    type: "Content",
-    description: "Inappropriate library description",
-    status: "open",
-    severity: "low",
-    date: "2 days ago",
-  },
-];
+type Finding = {
+  id: string;
+  title: string;
+  description: string;
+  severity: "high" | "medium";
+};
 
 export default function AdminReportsPage() {
+  const { user, isLoading } = useAuth();
+  const {
+    data: librariesData,
+    loading: librariesLoading,
+    error: librariesError,
+    refetch: refetchLibraries,
+  } = useGetLibrariesQuery();
+  const { fetchUsers, usersData, usersLoading, usersError } =
+    useGetUsersQuery();
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const libraries = useMemo(
+    () => (librariesData?.getLibraries ?? []).filter((lib) => !!lib?.id),
+    [librariesData],
+  );
+
+  // This is a data-integrity report derived from what the platform actually
+  // has on file — there's no fraud/dispute reporting system in the backend
+  // yet, so real, useful findings are surfaced here instead of invented ones.
+  const findings: Finding[] = useMemo(() => {
+    const list: Finding[] = [];
+
+    const missingAddress = libraries.filter((lib) => !lib?.address?.trim());
+    if (missingAddress.length > 0) {
+      list.push({
+        id: "lib-address",
+        title: `${missingAddress.length} ${missingAddress.length === 1 ? "library is" : "libraries are"} missing an address`,
+        description: missingAddress
+          .map((lib) => lib?.name || "Untitled Library")
+          .join(", "),
+        severity: "medium",
+      });
+    }
+
+    const negativeBalance = libraries.filter((lib) => (lib?.balance ?? 0) < 0);
+    if (negativeBalance.length > 0) {
+      list.push({
+        id: "lib-balance",
+        title: `${negativeBalance.length} ${negativeBalance.length === 1 ? "library has" : "libraries have"} a negative balance`,
+        description: negativeBalance
+          .map((lib) => lib?.name || "Untitled Library")
+          .join(", "),
+        severity: "high",
+      });
+    }
+
+    const missingEmail = usersData.filter((u) => !u?.email?.trim());
+    if (missingEmail.length > 0) {
+      list.push({
+        id: "user-email",
+        title: `${missingEmail.length} ${missingEmail.length === 1 ? "user is" : "users are"} missing an email address`,
+        description: missingEmail
+          .map((u) => u?.name || "Unnamed User")
+          .join(", "),
+        severity: "medium",
+      });
+    }
+
+    return list;
+  }, [libraries, usersData]);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-500 border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (user?.role?.type !== User_Roles.Admin) {
+    return <Forbidden />;
+  }
+
+  const loading = librariesLoading || usersLoading;
+  const error = librariesError || usersError;
+
   return (
     <div className="flex flex-col gap-8">
-      {/* Header Actions */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="relative w-full sm:max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
-          <Input
-            placeholder="Search reports by ID or keyword..."
-            className="pl-10 bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-purple-500/50"
-          />
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            className="bg-transparent border-white/10 text-white hover:bg-white/5"
-          >
-            Filter Status
-          </Button>
-          <Button className="bg-purple-500 hover:bg-purple-600 text-white shadow-lg shadow-purple-500/20">
-            <FileText className="mr-2 h-4 w-4" />
-            Generate Audit
-          </Button>
-        </div>
+      <div>
+        <h2 className="text-xl font-semibold text-white">
+          Platform Data Report
+        </h2>
+        <p className="text-zinc-400 text-sm mt-1">
+          Data-integrity findings across {libraries.length}{" "}
+          {libraries.length === 1 ? "library" : "libraries"} and{" "}
+          {usersData.length} {usersData.length === 1 ? "user" : "users"}.
+        </p>
       </div>
 
-      {/* Reports List */}
-      <div className="grid gap-4">
-        {mockReports.map((report) => (
-          <Card
-            key={report.id}
-            className="bg-zinc-900/50 border-white/5 backdrop-blur-xl hover:bg-zinc-800/50 transition-colors cursor-pointer group"
+      {loading ? (
+        <div className="flex h-40 items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-500 border-t-transparent" />
+        </div>
+      ) : error ? (
+        <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+          <AlertCircle className="h-8 w-8 text-rose-500 mb-3" />
+          <p className="text-zinc-300 font-medium mb-1">
+            Couldn&apos;t generate the report
+          </p>
+          <p className="text-zinc-500 text-sm mb-4 break-all">
+            {error.message}
+          </p>
+          <button
+            onClick={() => {
+              refetchLibraries();
+              fetchUsers();
+            }}
+            className="flex items-center gap-2 bg-white text-zinc-950 px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-zinc-200 transition-colors"
           >
-            <CardContent className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-start gap-4">
+            <RotateCcw className="h-4 w-4" />
+            Try Again
+          </button>
+        </div>
+      ) : findings.length === 0 ? (
+        <Card className="bg-zinc-900/50 border-white/5 backdrop-blur-xl">
+          <CardContent className="p-10 flex flex-col items-center text-center gap-3">
+            <div className="h-12 w-12 rounded-full bg-emerald-500/10 flex items-center justify-center">
+              <CheckCircle2 className="h-6 w-6 text-emerald-400" />
+            </div>
+            <p className="text-zinc-300 font-medium">
+              No data-integrity issues found
+            </p>
+            <p className="text-zinc-500 text-sm max-w-md">
+              Every library and user record on file has the required
+              information filled in.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4">
+          {findings.map((finding) => (
+            <Card
+              key={finding.id}
+              className="bg-zinc-900/50 border-white/5 backdrop-blur-xl"
+            >
+              <CardContent className="p-6 flex items-start gap-4">
                 <div
                   className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${
-                    report.severity === "high"
+                    finding.severity === "high"
                       ? "bg-rose-500/10 text-rose-400"
-                      : report.severity === "medium"
-                        ? "bg-amber-500/10 text-amber-400"
-                        : "bg-blue-500/10 text-blue-400"
+                      : "bg-amber-500/10 text-amber-400"
                   }`}
                 >
-                  {report.severity === "high" ? (
+                  {finding.id.startsWith("user") ? (
+                    <Users className="h-5 w-5" />
+                  ) : finding.severity === "high" ? (
                     <AlertTriangle className="h-5 w-5" />
                   ) : (
-                    <AlertCircle className="h-5 w-5" />
+                    <Building className="h-5 w-5" />
                   )}
                 </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-white font-medium">{report.id}</span>
-                    <span className="text-zinc-500 text-sm">•</span>
-                    <span className="text-zinc-400 text-sm">{report.type}</span>
-                  </div>
-                  <p className="text-zinc-300 text-sm">{report.description}</p>
-                  <p className="text-zinc-500 text-xs mt-2">{report.date}</p>
+                <div className="min-w-0">
+                  <p className="text-white font-medium">{finding.title}</p>
+                  <p className="text-zinc-400 text-sm mt-1 truncate">
+                    {finding.description}
+                  </p>
                 </div>
-              </div>
-
-              <div className="flex items-center gap-4 w-full sm:w-auto mt-4 sm:mt-0 justify-between sm:justify-end">
-                <span
-                  className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${
-                    report.status === "open"
-                      ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
-                      : report.status === "investigating"
-                        ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
-                        : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                  }`}
-                >
-                  {report.status === "resolved" && (
-                    <CheckCircle2 className="mr-1.5 h-3 w-3" />
-                  )}
-                  {report.status.toUpperCase()}
-                </span>
-                <Button
-                  variant="ghost"
-                  className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  Review
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

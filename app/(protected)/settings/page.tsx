@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
+import { useMutation } from "@apollo/client/react";
 import { useAuth } from "@/context/AuthContext";
 import { Forbidden } from "@/components/ui/Forbidden";
-import { DashboardShell } from "@/components/layout/DashboardShell";
-import { Settings, Save, MapPin, Clock, Banknote } from "lucide-react";
+import { User_Roles } from "@/graphql/generated/graphql";
+import { Settings, Save, MapPin } from "lucide-react";
 import {
   Card,
   CardHeader,
@@ -15,8 +17,67 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { UpdateLibraryDocument } from "@/graphql/library/mutations.generated";
 
 export default function OwnerSettingsPage() {
+  const { user, setUser, isLoading } = useAuth();
+  // The parent protected layout only renders this page once `user` has
+  // loaded, so it's safe to seed the form from it directly on mount.
+  const [name, setName] = useState(() => user?.library_owned?.name || "");
+  const [address, setAddress] = useState(
+    () => user?.library_owned?.address || "",
+  );
+  const [saveError, setSaveError] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  const [updateLibrary, { loading: isSaving }] = useMutation(
+    UpdateLibraryDocument,
+  );
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-500 border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (user?.role?.type !== User_Roles.LibraryOwner) {
+    return <Forbidden />;
+  }
+
+  const handleSave = async () => {
+    if (!user?.library_owned?.id) return;
+    try {
+      setSaveError("");
+      setSaved(false);
+      const { data } = await updateLibrary({
+        variables: {
+          id: user.library_owned.id,
+          input: { name: name.trim(), address: address.trim() },
+        },
+      });
+      if (data?.updateLibrary) {
+        setUser((prev) =>
+          prev
+            ? {
+                ...prev,
+                library_owned: {
+                  ...prev.library_owned,
+                  name: data.updateLibrary?.name ?? prev.library_owned?.name,
+                  address:
+                    data.updateLibrary?.address ?? prev.library_owned?.address,
+                },
+              }
+            : prev,
+        );
+        setSaved(true);
+      }
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Failed to save changes");
+    }
+  };
+
   return (
     <div className="grid lg:grid-cols-3 gap-8">
       {/* Navigation / Sections */}
@@ -33,101 +94,57 @@ export default function OwnerSettingsPage() {
         >
           <MapPin className="mr-2 h-4 w-4" /> Location & Address
         </Button>
-        <Button
-          variant="ghost"
-          className="justify-start text-zinc-400 hover:bg-white/5 hover:text-white"
-        >
-          <Clock className="mr-2 h-4 w-4" /> Operating Hours
-        </Button>
-        <Button
-          variant="ghost"
-          className="justify-start text-zinc-400 hover:bg-white/5 hover:text-white"
-        >
-          <Banknote className="mr-2 h-4 w-4" /> Fines & Fees
-        </Button>
       </div>
 
-      {/* Settings Forms */}
+      {/* Settings Form */}
       <div className="lg:col-span-2 flex flex-col gap-8">
         <Card className="bg-zinc-900/50 border-white/5 backdrop-blur-xl">
           <CardHeader>
             <CardTitle className="text-white text-lg font-semibold">
-              General Information
+              Library Profile
             </CardTitle>
             <CardDescription className="text-zinc-400">
-              Update your library&apos;s public profile and branding.
+              Update your library&apos;s name and address.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label className="text-zinc-300">Library Name</Label>
               <Input
-                defaultValue="Central City Library"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setSaved(false);
+                }}
                 className="bg-zinc-950/50 border-white/10 text-white focus-visible:ring-purple-500/50"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-zinc-300">Contact Email</Label>
+              <Label className="text-zinc-300">Address</Label>
               <Input
-                defaultValue="hello@centralcitylib.com"
+                value={address}
+                onChange={(e) => {
+                  setAddress(e.target.value);
+                  setSaved(false);
+                }}
                 className="bg-zinc-950/50 border-white/10 text-white focus-visible:ring-purple-500/50"
               />
             </div>
-            <div className="space-y-2">
-              <Label className="text-zinc-300">Public Description</Label>
-              <textarea
-                defaultValue="A massive collection of digital and physical books located in the heart of the city."
-                className="w-full rounded-md bg-zinc-950/50 border border-white/10 text-white p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 min-h-[100px] resize-y"
-              />
-            </div>
+            {saveError && <p className="text-sm text-rose-400">{saveError}</p>}
+            {saved && (
+              <p className="text-sm text-emerald-400">
+                Changes saved successfully.
+              </p>
+            )}
           </CardContent>
           <CardFooter className="border-t border-white/5 pt-4 flex justify-end">
-            <Button className="bg-purple-500 hover:bg-purple-600 text-white shadow-lg shadow-purple-500/20">
-              <Save className="mr-2 h-4 w-4" /> Save Changes
-            </Button>
-          </CardFooter>
-        </Card>
-
-        <Card className="bg-zinc-900/50 border-white/5 backdrop-blur-xl">
-          <CardHeader>
-            <CardTitle className="text-white text-lg font-semibold">
-              Fines & Penalties
-            </CardTitle>
-            <CardDescription className="text-zinc-400">
-              Configure automated daily fees for overdue rentals.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-zinc-300">Overdue Fee (Per Day)</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
-                    $
-                  </span>
-                  <Input
-                    defaultValue="1.50"
-                    className="pl-8 bg-zinc-950/50 border-white/10 text-white focus-visible:ring-purple-500/50"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-zinc-300">Max Fine Cap</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
-                    $
-                  </span>
-                  <Input
-                    defaultValue="30.00"
-                    className="pl-8 bg-zinc-950/50 border-white/10 text-white focus-visible:ring-purple-500/50"
-                  />
-                </div>
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter className="border-t border-white/5 pt-4 flex justify-end">
-            <Button className="bg-purple-500 hover:bg-purple-600 text-white shadow-lg shadow-purple-500/20">
-              <Save className="mr-2 h-4 w-4" /> Save Pricing
+            <Button
+              className="bg-purple-500 hover:bg-purple-600 text-white shadow-lg shadow-purple-500/20"
+              disabled={isSaving || !name.trim() || !address.trim()}
+              onClick={handleSave}
+            >
+              <Save className="mr-2 h-4 w-4" />
+              {isSaving ? "Saving..." : "Save Changes"}
             </Button>
           </CardFooter>
         </Card>

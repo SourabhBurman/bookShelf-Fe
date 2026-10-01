@@ -1,84 +1,53 @@
 "use client";
 
+import { useEffect, useMemo } from "react";
 import { BookCard, Book } from "@/components/ui/BookCard";
 import { StatCard } from "@/components/ui/StatCard";
-import {
-  Search,
-  Home,
-  Library,
-  Heart,
-  Bookmark,
-  History,
-  LayoutGrid,
-  Clock,
-  IndianRupee,
-  Gem,
-  Flame,
-  BookOpen,
-} from "lucide-react";
+import { AlertCircle, Clock, IndianRupee, Package, Search, Flame } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
-import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
-
-const MOCK_TRENDING_BOOKS: Book[] = [
-  {
-    id: "1",
-    title: "The Midnight Library",
-    author: "Matt Haig",
-    category: "Fiction",
-    coverImage:
-      "https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=800&auto=format&fit=crop",
-    rentPrice: 2.99,
-    purchasePrice: 14.99,
-    rating: 4.8,
-    available: true,
-  },
-  {
-    id: "2",
-    title: "Atomic Habits",
-    author: "James Clear",
-    category: "Self-Help",
-    coverImage:
-      "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?q=80&w=800&auto=format&fit=crop",
-    rentPrice: 3.5,
-    purchasePrice: 20.0,
-    rating: 4.9,
-    available: false,
-  },
-  {
-    id: "3",
-    title: "Dune",
-    author: "Frank Herbert",
-    category: "Sci-Fi",
-    coverImage:
-      "https://images.unsplash.com/photo-1614728263952-84ea256f9679?q=80&w=800&auto=format&fit=crop",
-    rentPrice: 4.0,
-    purchasePrice: 25.0,
-    rating: 4.7,
-    available: true,
-  },
-  {
-    id: "4",
-    title: "Sapiens: A Brief History",
-    author: "Yuval Noah Harari",
-    category: "History",
-    coverImage:
-      "https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=800&auto=format&fit=crop",
-    rentPrice: 3.99,
-    purchasePrice: 22.5,
-    rating: 4.6,
-    available: true,
-  },
-];
+import { useGetOrdersQuery } from "@/graphql/order/hooks";
+import { useGetBooksQuery } from "@/graphql/book/hooks";
+import { OrderStatus } from "@/graphql/generated/graphql";
 
 export function UserDashboard() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const { fetchOrders, ordersData, ordersLoading, ordersError } =
+    useGetOrdersQuery();
+  const { getBooks, data: booksData, loading: booksLoading, error: booksError } =
+    useGetBooksQuery();
+
+  useEffect(() => {
+    fetchOrders();
+    getBooks();
+  }, [fetchOrders, getBooks]);
+
+  const activeRentalsCount = useMemo(
+    () => ordersData.filter((o) => o.current_status === OrderStatus.Borrowed).length,
+    [ordersData],
+  );
+
+  const trendingBooks: Book[] = useMemo(() => {
+    return (booksData?.getBooks ?? []).slice(0, 4).map((b) => ({
+      id: b?.id || "",
+      title: b?.name || "Unknown Title",
+      author: b?.author || "Unknown Author",
+      category: b?.genre || "Uncategorized",
+      coverImage:
+        b?.coverImage ||
+        `https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=800&auto=format&fit=crop&random=${b?.id}`,
+      rentPrice: b?.rentPrice || 2.99,
+      purchasePrice: b?.cost || 14.99,
+      rating: b?.averageRating ?? null,
+      available: (b?.totalAvailableCopies || 0) > 0,
+    }));
+  }, [booksData]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,33 +115,24 @@ export function UserDashboard() {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
         <StatCard
           title="Active Rentals"
-          value="3"
+          value={ordersLoading || ordersError ? "—" : activeRentalsCount.toString()}
           icon={<Clock className="h-6 w-6" />}
           variant="purple"
-          trendLabel="2 due this week"
         />
         <StatCard
-          title="Money Saved"
-          value="$142.50"
+          title="Account Balance"
+          value={`$${(user.balance ?? 0).toFixed(2)}`}
           icon={<IndianRupee className="h-6 w-6" />}
           variant="emerald"
-          trend={12}
         />
         <StatCard
-          title="Books Read"
-          value="24"
-          icon={<Bookmark className="h-6 w-6" />}
+          title="Orders Placed"
+          value={ordersLoading ? "—" : ordersData.length.toString()}
+          icon={<Package className="h-6 w-6" />}
           variant="blue"
-          trend={8}
-        />
-        <StatCard
-          title="Membership"
-          value="Pro"
-          icon={<Gem className="h-6 w-6" />}
-          variant="amber"
         />
       </div>
 
@@ -182,7 +142,7 @@ export function UserDashboard() {
           <div className="flex items-center gap-2">
             <Flame className="h-6 w-6 text-orange-500 animate-pulse" />
             <h3 className="text-2xl font-bold text-white tracking-tight">
-              Trending Now
+              From the Catalog
             </h3>
           </div>
           <Button
@@ -194,13 +154,28 @@ export function UserDashboard() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {MOCK_TRENDING_BOOKS.map((book) => (
-            <div key={book.id}>
-              <BookCard book={book} />
-            </div>
-          ))}
-        </div>
+        {booksLoading ? (
+          <div className="flex h-40 items-center justify-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-500 border-t-transparent" />
+          </div>
+        ) : booksError ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center text-zinc-400">
+            <AlertCircle className="h-8 w-8 text-rose-500 mb-3" />
+            Couldn&apos;t load the catalog right now.
+          </div>
+        ) : trendingBooks.length === 0 ? (
+          <p className="text-zinc-500 text-sm">
+            No books are available yet — check back soon.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {trendingBooks.map((book) => (
+              <div key={book.id}>
+                <BookCard book={book} />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </>
   );

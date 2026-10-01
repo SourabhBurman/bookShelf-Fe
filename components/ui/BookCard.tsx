@@ -13,7 +13,7 @@ export interface Book {
   category: string;
   rentPrice: number;
   purchasePrice: number;
-  rating: number;
+  rating: number | null;
   available: boolean;
 }
 
@@ -45,8 +45,15 @@ export function BookCard({ book, className }: BookCardProps) {
 
       {/* Floating Rating */}
       <div className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-zinc-900/60 px-2 py-1 text-xs font-semibold text-zinc-200 border border-white/10 backdrop-blur-md shadow-lg">
-        <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
-        {book.rating.toFixed(1)}
+        <Star
+          className={cn(
+            "h-3 w-3",
+            book.rating
+              ? "text-yellow-500 fill-yellow-500"
+              : "text-zinc-500",
+          )}
+        />
+        {book.rating ? book.rating.toFixed(1) : "New"}
       </div>
 
       <div className="relative h-40 w-full bg-zinc-900 overflow-hidden rounded-t-xl">
@@ -83,7 +90,7 @@ export function BookCard({ book, className }: BookCardProps) {
         <div className="mt-4 flex items-end justify-between bg-zinc-900/50 rounded-lg p-2.5 border border-white/5">
           <div className="flex flex-col">
             <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mb-0.5">
-              RENT / MO
+              RENT / DAY
             </span>
             <span className="text-lg font-black text-white tracking-tight">
               ${book.rentPrice.toFixed(2)}

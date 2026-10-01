@@ -14,7 +14,6 @@ import { Library as LibrayType, User_Roles } from "@/graphql/generated/graphql";
 import MyLoading from "@/components/myLoading";
 import { Field, Form, useForm } from "@formisch/react";
 import * as v from "valibot";
-import { FieldLabel } from "@/components/ui/field";
 
 const setupSchema = v.object({
   name: v.pipe(
@@ -146,7 +145,6 @@ export default function LibrarySetupPage() {
           <Field of={setupForm} path={["address"]}>
             {(field) => (
               <div className="space-y-2">
-                <FieldLabel htmlFor="input-invalid">Invalid Input</FieldLabel>
                 <label
                   htmlFor="address"
                   className="text-sm font-medium text-zinc-300 flex items-center gap-2"
