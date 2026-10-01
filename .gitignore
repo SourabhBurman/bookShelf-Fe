@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local Claude Code session state (permission approvals, machine-specific) —
+# not shared project config, shouldn't be committed
+.claude/

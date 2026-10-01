@@ -1,0 +1,31 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // Breakpoints in Server Components, layouts, route handlers,
+      // anything that runs on the Next.js server itself.
+      "type": "node-terminal",
+      "request": "launch",
+      "name": "Next.js: debug server-side",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      // Breakpoints in "use client" components/hooks — runs in an actual
+      // Chrome instance VS Code controls. Start the server-side config (or
+      // your normal `npm run dev`) first, then run this one against it.
+      "type": "chrome",
+      "request": "launch",
+      "name": "Next.js: debug client-side",
+      "url": "http://localhost:3000"
+    }
+  ],
+  "compounds": [
+    {
+      // Runs both at once — a breakpoint in either a server or client file
+      // gets hit, in one debug session.
+      "name": "Next.js: debug full stack",
+      "configurations": ["Next.js: debug server-side", "Next.js: debug client-side"]
+    }
+  ]
+}
