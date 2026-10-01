@@ -9,3 +9,12 @@ export const CREATE_PAYMENT_INTENT = gql`
     }
   }
 `;
+
+export const RETURN_ORDER = gql`
+  mutation ReturnOrder($input: [UpdateOrderInput]!) {
+    returnOrder(input: $input) {
+      id
+      current_status
+    }
+  }
+`;

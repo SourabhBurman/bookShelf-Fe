@@ -1,4 +1,4 @@
-import { useQuery, useLazyQuery } from "@apollo/client/react";
+import { useQuery } from "@apollo/client/react";
 import { GetLibrariesDocument, GetLibraryByIdDocument } from "./queries.generated";
 
 export const useGetLibrariesQuery = () => {

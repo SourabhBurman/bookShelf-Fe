@@ -13,6 +13,27 @@ export const GET_BOOKS = gql`
       publishedDate
       coverImage
       author
+      totalAvailableCopies
+      averageRating
+    }
+  }
+`;
+
+export const GET_BOOKS_BY_LIBRARY = gql`
+  query GetBooksByLibrary($id: ID!) {
+    getBooksByLibrary(id: $id) {
+      id
+      totalQuantities
+      quantityAvailable
+      book {
+        id
+        name
+        author
+        genre
+        cost
+        rentPrice
+        coverImage
+      }
     }
   }
 `;
@@ -30,6 +51,8 @@ export const GET_BOOK_BY_ID = gql`
       publishedDate
       coverImage
       author
+      averageRating
+      totalAvailableCopies
     }
   }
 `;

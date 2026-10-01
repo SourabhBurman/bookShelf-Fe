@@ -1,14 +1,21 @@
 import { gql } from "@apollo/client";
 
-// Example Mutation
-// export const LOGIN_USER = gql`
-//   mutation Login($email: String!, $password: String!) {
-//     login(email: $email, password: $password) {
-//       id
-//       name
-//       role {
-//         type
-//       }
-//     }
-//   }
-// `;
+export const UPDATE_USER = gql`
+  mutation UpdateUser($id: ID!, $input: UpdateUserInput!) {
+    updateUser(id: $id, input: $input) {
+      id
+      name
+      email
+      gender
+    }
+  }
+`;
+
+export const DELETE_USER = gql`
+  mutation DeleteUser($id: ID!) {
+    deleteUser(id: $id) {
+      success
+      message
+    }
+  }
+`;
