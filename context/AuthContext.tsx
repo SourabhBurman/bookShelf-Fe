@@ -22,6 +22,7 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 import { logout as logoutApi } from "@/services/authServices";
 import { useGetUserLazyQuery } from "@/graphql/user/hooks";
 import type { User } from "@/graphql/generated/graphql";
+import { useApolloClient } from "@apollo/client/react";
 
 export const AuthProvider = ({
   children,
@@ -36,7 +37,8 @@ export const AuthProvider = ({
   // it will be true when user is loading for the first time
   // and false when user is loaded
   const [isInitializing, setIsInitializing] = useState(true);
-  const { getUser, loading, error } = useGetUserLazyQuery();
+  const { getUser, loading } = useGetUserLazyQuery();
+  const apolloClient = useApolloClient();
 
   // Fetch the user session securely from the backend cookie via GraphQL
   useEffect(() => {
@@ -51,8 +53,11 @@ export const AuthProvider = ({
 
       try {
         const response = await getUser();
+        // Use this call's own result rather than the hook's `error` state:
+        // that state reflects the previous render's value, not necessarily
+        // this call's outcome.
         const userData = response?.data?.getUser;
-        if (error || !userData) {
+        if (response?.error || !userData) {
           setUser(null);
         } else {
           setUser(userData);
@@ -66,12 +71,17 @@ export const AuthProvider = ({
     };
 
     fetchUser();
-  }, [hasInitialToken]);
+  }, [hasInitialToken, getUser]);
 
   const logout = async () => {
     try {
       await logoutApi();
       setUser(null);
+      // getUser() takes no variables, so its cache entry isn't scoped to
+      // any particular user — without clearing it here, logging in as a
+      // different account in the same tab would silently show whichever
+      // user's profile got cached first.
+      await apolloClient.clearStore();
     } catch (e) {
       console.error("Logout failed", e);
     }

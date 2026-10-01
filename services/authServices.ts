@@ -1,6 +1,6 @@
 // services/authService.ts
 
-import { Gender, User, User_Roles } from "@/graphql/generated/graphql";
+import { Gender, User_Roles } from "@/graphql/generated/graphql";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
 
@@ -36,6 +36,23 @@ export const signup = async (data: {
 
   if (!response.ok) {
     throw new Error("Not logged in");
+  }
+
+  return response.json();
+};
+
+// Attempts to silently reissue an access token from the httpOnly refresh
+// token cookie. Throws if there's no valid refresh token (caller should then
+// treat the user as logged out).
+export const refresh = async () => {
+  const response = await fetch(`${API_URL}/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error("Session expired");
   }
 
   return response.json();

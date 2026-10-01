@@ -51,7 +51,7 @@ export default function LoginPage() {
     try {
       setErrorMessage("");
       const { login } = await import("@/services/authServices");
-      const res = await login(email, password);
+      await login(email, password);
       const userData = await getUser();
       if (userData?.data?.getUser) {
         setUser(userData.data.getUser);

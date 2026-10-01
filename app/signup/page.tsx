@@ -21,6 +21,7 @@ import { useRouter } from "nextjs-toploader/app";
 import { useAuth } from "@/context/AuthContext";
 import { User_Roles, Gender } from "@/graphql/generated/graphql";
 import { signup } from "@/services/authServices";
+import { useGetUserLazyQuery } from "@/graphql/user/hooks";
 
 const signupSchema = v.pipe(
   v.object({
@@ -34,7 +35,7 @@ const signupSchema = v.pipe(
     ),
     role: v.pipe(
       v.picklist(
-        [User_Roles.Reader, User_Roles.LibraryOwner, User_Roles.Admin],
+        [User_Roles.Reader, User_Roles.LibraryOwner],
         "Please select a valid role",
       ),
     ),
@@ -66,6 +67,7 @@ export default function SignupPage() {
   const router = useRouter();
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const { getUser } = useGetUserLazyQuery();
 
   useEffect(() => {
     if (user) {
@@ -91,12 +93,17 @@ export default function SignupPage() {
         ...response,
       });
 
-      // Automatically log the user in after successful signup
+      // Automatically log the user in after successful signup. The login
+      // response is just { accessToken } — it doesn't carry the user's
+      // profile (role, library_owned, etc.), so that has to come from a
+      // fresh getUser() call, same as the login page does.
       const { login } = await import("@/services/authServices");
-      const res = await login(response.email, response.password);
-      const loggedInUser = res.user || res;
+      await login(response.email, response.password);
+      const userData = await getUser();
+      if (userData?.data?.getUser) {
+        setUser(userData.data.getUser);
+      }
 
-      setUser(loggedInUser);
       router.push("/");
     } catch (error) {
       if (error instanceof Error) {
@@ -176,7 +183,9 @@ export default function SignupPage() {
                       value={field.input ?? ""}
                       onValueChange={(val) => {
                         if (val) {
-                          field.onChange(val as User_Roles);
+                          field.onChange(
+                            val as User_Roles.Reader | User_Roles.LibraryOwner,
+                          );
                         }
                       }}
                       className="justify-center m-auto gap-3 pt-1"
@@ -194,13 +203,6 @@ export default function SignupPage() {
                         className={`flex-1 border border-white/10 bg-zinc-950/50 data-[state=on]:bg-purple-500/20 data-[state=on]:text-purple-400 data-[state=on]:border-purple-500/50 hover:bg-zinc-900 hover:text-white transition-all ${field.errors || errorMessage ? "border-rose-500/50 text-rose-400" : "text-zinc-300"}`}
                       >
                         Owner
-                      </ToggleGroupItem>
-                      <ToggleGroupItem
-                        value={User_Roles.Admin}
-                        aria-label="Toggle Admin"
-                        className={`flex-1 border border-white/10 bg-zinc-950/50 data-[state=on]:bg-purple-500/20 data-[state=on]:text-purple-400 data-[state=on]:border-purple-500/50 hover:bg-zinc-900 hover:text-white transition-all ${field.errors || errorMessage ? "border-rose-500/50 text-rose-400" : "text-zinc-300"}`}
-                      >
-                        Admin
                       </ToggleGroupItem>
                     </ToggleGroup>
                     {field.errors && (
