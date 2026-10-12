@@ -3,11 +3,22 @@
 import { useEffect } from "react";
 import { io, Socket } from "socket.io-client";
 import { useApolloClient } from "@apollo/client/react";
+import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import {
   GetNotificationsDocument,
   GetUnreadNotificationCountDocument,
 } from "@/graphql/notification/queries.generated";
+import { PaymentStatus } from "@/graphql/generated/graphql";
+
+// Mirrors PaymentStatusEvent in server/src/util/notify.ts.
+interface PaymentStatusEvent {
+  paymentIntentId: string;
+  orderId: string | null;
+  paymentStatus: PaymentStatus;
+  orderStatus: string | null;
+  message: string;
+}
 
 /**
  * Opens a live connection to the backend while the user's logged in, and
@@ -39,6 +50,24 @@ export const useNotificationSocket = () => {
       // approximation of it.
       client.refetchQueries({
         include: [GetNotificationsDocument, GetUnreadNotificationCountDocument],
+      });
+    });
+
+    // Sent by the backend's Stripe webhook once a payment is actually
+    // settled (server/src/controllers/stripeWebhook.ts). Toast it wherever
+    // the user is, and refetch any page currently showing that payment or
+    // the order list — the checkout success page is waiting on exactly this.
+    socket.on("payment_status", (event: PaymentStatusEvent) => {
+      if (event.paymentStatus === PaymentStatus.Paid) {
+        toast.success(event.message);
+      } else if (event.paymentStatus === PaymentStatus.Failed) {
+        toast.error(event.message);
+      }
+      client.refetchQueries({
+        include: "active",
+        onQueryUpdated: (query) =>
+          query.queryName === "GetPaymentStatus" ||
+          query.queryName === "GetOrders",
       });
     });
 

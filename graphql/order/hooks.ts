@@ -1,5 +1,9 @@
-import { useLazyQuery } from "@apollo/client/react";
-import { GetOrdersDocument, GetLibraryOrdersDocument } from "./queries.generated";
+import { useLazyQuery, useQuery } from "@apollo/client/react";
+import {
+  GetOrdersDocument,
+  GetLibraryOrdersDocument,
+  GetPaymentStatusDocument,
+} from "./queries.generated";
 
 export const useGetOrdersQuery = () => {
   const [fetchOrders, { data, loading, error }] =
@@ -24,5 +28,25 @@ export const useGetLibraryOrdersQuery = () => {
     libraryOrdersData: data?.getLibraryOrders ?? [],
     libraryOrdersLoading: loading,
     libraryOrdersError: error,
+  };
+};
+
+// Server-side status of one Stripe payment, as settled by the backend's
+// webhook. Polled by the checkout success page as a fallback for the live
+// `payment_status` socket push (see hooks/useNotificationSocket.ts), which
+// refetches this query the moment the webhook lands.
+export const useGetPaymentStatusQuery = (
+  paymentIntentId: string | null,
+  pollInterval: number,
+) => {
+  const { data, error } = useQuery(GetPaymentStatusDocument, {
+    variables: { paymentIntentId: paymentIntentId ?? "" },
+    skip: !paymentIntentId,
+    pollInterval,
+    fetchPolicy: "network-only",
+  });
+  return {
+    paymentStatus: data?.getPaymentStatus ?? null,
+    paymentStatusError: error,
   };
 };

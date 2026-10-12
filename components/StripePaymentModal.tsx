@@ -19,7 +19,7 @@ function CheckoutForm({
   onSuccess,
   onCancel,
 }: {
-  onSuccess: () => void;
+  onSuccess: (paymentIntentId: string) => void;
   onCancel: () => void;
 }) {
   const stripe = useStripe();
@@ -37,7 +37,7 @@ function CheckoutForm({
     setIsLoading(true);
     setErrorMsg(null);
 
-    const { error } = await stripe.confirmPayment({
+    const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
       confirmParams: {
         return_url: `${window.location.origin}/orders/success`,
@@ -49,7 +49,10 @@ function CheckoutForm({
       setErrorMsg(error.message || "An unexpected error occurred.");
       setIsLoading(false);
     } else {
-      onSuccess();
+      // Stripe.js accepting the payment isn't the final word — the
+      // backend's webhook is. Hand the intent id on so the success page can
+      // wait for the server-confirmed outcome.
+      onSuccess(paymentIntent.id);
     }
   };
 
@@ -85,7 +88,7 @@ export function StripePaymentModal({
   onCancel,
 }: {
   clientSecret: string;
-  onSuccess: () => void;
+  onSuccess: (paymentIntentId: string) => void;
   onCancel: () => void;
 }) {
   return (

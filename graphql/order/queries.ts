@@ -60,3 +60,15 @@ export const GET_LIBRARY_ORDERS = gql`
     }
   }
 `;
+
+export const GET_PAYMENT_STATUS = gql`
+  query GetPaymentStatus($paymentIntentId: String!) {
+    getPaymentStatus(paymentIntentId: $paymentIntentId) {
+      paymentIntentId
+      paymentStatus
+      orderId
+      orderStatus
+      bookName
+    }
+  }
+`;

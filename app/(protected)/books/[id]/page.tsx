@@ -244,7 +244,13 @@ export default function BookDetailPage() {
       {clientSecret && (
         <StripePaymentModal
           clientSecret={clientSecret}
-          onSuccess={() => router.push("/orders/success")}
+          onSuccess={(paymentIntentId) =>
+            // Same query param Stripe itself appends when a payment method
+            // redirects to return_url, so the success page reads one shape.
+            router.push(
+              `/orders/success?payment_intent=${encodeURIComponent(paymentIntentId)}`,
+            )
+          }
           onCancel={() => setClientSecret(null)}
         />
       )}

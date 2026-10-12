@@ -365,6 +365,22 @@ export type PaymentIntentResponse = {
   currency: Scalars['String']['output'];
 };
 
+export enum PaymentStatus {
+  Failed = 'Failed',
+  Paid = 'Paid',
+  Pending = 'Pending'
+}
+
+/** Server-side outcome of a Stripe payment, as recorded by the webhook */
+export type PaymentStatusResponse = {
+  __typename?: 'PaymentStatusResponse';
+  bookName?: Maybe<Scalars['String']['output']>;
+  orderId?: Maybe<Scalars['ID']['output']>;
+  orderStatus?: Maybe<OrderStatus>;
+  paymentIntentId: Scalars['String']['output'];
+  paymentStatus: PaymentStatus;
+};
+
 export type Permission = {
   __typename?: 'Permission';
   description?: Maybe<Scalars['String']['output']>;
@@ -404,6 +420,8 @@ export type Query = {
   getNotifications: Array<Notification>;
   getOrder?: Maybe<Order>;
   getOrders: Array<Order>;
+  /** Polled by the checkout success page until the webhook settles the payment */
+  getPaymentStatus: PaymentStatusResponse;
   getPermission?: Maybe<Permission>;
   getPermissions: Array<Permission>;
   getReviewsForBook: Array<Review>;
@@ -441,6 +459,11 @@ export type QueryGetLibraryByIdArgs = {
 
 export type QueryGetOrderArgs = {
   id: Scalars['ID']['input'];
+};
+
+
+export type QueryGetPaymentStatusArgs = {
+  paymentIntentId: Scalars['String']['input'];
 };
 
 
